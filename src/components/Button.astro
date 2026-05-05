@@ -1,13 +1,35 @@
 ---
 interface Props {
+  href?: string;
   type?: 'button' | 'submit' | 'reset';
+  variant?: 'primary' | 'dark' | 'ghost';
   class?: string;
 }
-const { type = 'button', class: className } = Astro.props;
+const {
+  href,
+  type = 'button',
+  variant = 'primary',
+  class: className = '',
+  ...rest
+} = Astro.props;
+
+const variantClasses = {
+  primary: 'btn-primary',
+  dark: 'btn-dark',
+  ghost: 'btn-ghost'
+};
+
+const baseClasses =
+  'btn-base';
 ---
-<button
-  type={type}
-  class={`bg-[var(--color-desert-sienna)] text-white px-6 py-3 rounded-[var(--radius-pill)] shadow-none ${className}`}
->
-  <slot />
-</button>
+{
+  href ? (
+    <a href={href} class={`${baseClasses} ${variantClasses[variant]} ${className}`} {...rest}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class={`${baseClasses} ${variantClasses[variant]} ${className}`} {...rest}>
+      <slot />
+    </button>
+  )
+}

@@ -1,10 +1,23 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Button from '../components/Button.astro';
+import logoFull from '../../assets/logos/Full-Fondo-Blanco.png';
 ---
 <Layout>
-  <main class="flex flex-col items-center justify-center min-h-screen">
-    <h1 class="text-5xl font-bold mb-8">Nodouno</h1>
-    <Button>Login con Supabase</Button>
+  <main class="landing minimal-center">
+    <section class="minimal-box">
+      <img src={logoFull.src} alt="Nodouno" class="brand-logo-full" />
+      <h1 class="minimal-title">
+        Calculo de Estructuras.
+        <br />
+        Simple.
+        <br />
+        Rapido.
+      </h1>
+      <p class="minimal-copy">
+        Haz un predimensionamiento de tus plantas de hormigon armado, de manera precisa, clara y rapida.
+      </p>
+      <Button href="/login" variant="primary" class="cta-home">Comenzar</Button>
+    </section>
   </main>
 </Layout>
