@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout>
+  <main class="p-8">
+    <h1 class="text-5xl font-bold">Dashboard</h1>
+  </main>
+  <script type="module">
+    import { supabase } from '../lib/supabase';
+
+    if (!supabase) {
+      window.location.href = '/';
+    } else {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = '/';
+      }
+    }
+  </script>
+</Layout>

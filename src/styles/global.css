@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-obsidian: #000d10;
+  --color-canvas-white: #ffffff;
+  --color-slate-mist: #8e8e95;
+  --color-desert-sienna: #bc7155;
+  --radius-card: 45px;
+  --radius-pill: 1000px;
+}
+
+body {
+  background-color: var(--color-canvas-white);
+  color: var(--color-obsidian);
+  font-family: 'HelveticaNowDisplay', ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+}
+
+h1, h2, h3 {
+  font-weight: 700;
+  letter-spacing: -0.05em;
+}

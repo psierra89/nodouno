@@ -1,0 +1,13 @@
+---
+interface Props {
+  type?: 'button' | 'submit' | 'reset';
+  class?: string;
+}
+const { type = 'button', class: className } = Astro.props;
+---
+<button
+  type={type}
+  class={`bg-[var(--color-desert-sienna)] text-white px-6 py-3 rounded-[var(--radius-pill)] shadow-none ${className}`}
+>
+  <slot />
+</button>
