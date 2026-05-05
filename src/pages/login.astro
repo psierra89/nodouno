@@ -3,32 +3,32 @@ import Layout from '../layouts/Layout.astro';
 import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
 ---
 <Layout>
-  <main class="landing minimal-center">
-    <section class="minimal-box login-box">
-      <img src={logoTr.src} alt="Nodouno" class="brand-logo-tr" />
-      <h1 class="minimal-title">Iniciar sesion</h1>
-      <p id="login-status" class="minimal-copy">Ingresa tu usuario y contrasena para continuar.</p>
+  <main class="flex min-h-screen items-center justify-center bg-canvas-white px-16 py-31 text-obsidian md:px-23">
+    <section class="flex w-full max-w-[860px] flex-col items-center gap-22 rounded-3xl border border-obsidian px-22 py-31 text-center md:px-38 md:py-53">
+      <img src={logoTr.src} alt="Nodouno" class="h-auto w-[min(96px,22vw)]" />
+      <h1 class="text-[clamp(52px,9vw,187px)] leading-[0.8] tracking-[-0.02em]">Iniciar sesion</h1>
+      <p id="login-status" class="max-w-[52ch] text-slate-mist">Ingresa tu usuario y contrasena para continuar.</p>
 
-      <form id="login-form" class="login-form">
-        <div class="login-row">
-          <input id="login-email" type="email" placeholder="tu@email.com" class="auth-input" />
+      <form id="login-form" class="flex w-full flex-col gap-13">
+        <div class="flex w-full flex-wrap justify-center gap-13">
+          <input id="login-email" type="email" placeholder="tu@email.com" class="min-w-[280px] flex-1 rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none outline-none focus:border-desert-sienna" />
         </div>
 
-        <div class="login-row">
-          <input id="login-password" type="password" placeholder="Contrasena" class="auth-input" />
+        <div class="flex w-full flex-wrap justify-center gap-13">
+          <input id="login-password" type="password" placeholder="Contrasena" class="min-w-[280px] flex-1 rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none outline-none focus:border-desert-sienna" />
         </div>
 
-        <div class="login-row center">
-          <button id="login-submit" class="btn-base btn-primary" type="submit">Entrar</button>
+        <div class="flex w-full justify-center">
+          <button id="login-submit" class="inline-flex items-center justify-center rounded-full border border-desert-sienna bg-desert-sienna px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-canvas-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45" type="submit">Entrar</button>
         </div>
       </form>
 
-      <p class="register-inline">
+      <p class="text-slate-mist">
         No tienes cuenta?
-        <a id="register-link" href="#">Crea una aqui.</a>
+        <a id="register-link" href="#" class="text-obsidian underline underline-offset-3">Crea una aqui.</a>
       </p>
 
-      <a href="/" class="back-link">&larr; Volver</a>
+      <a href="/" class="inline-flex items-center gap-8 rounded-full border border-obsidian px-16 py-11 text-obsidian no-underline">&larr; Volver</a>
     </section>
   </main>
 

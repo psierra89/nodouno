@@ -3,17 +3,20 @@ import Layout from '../layouts/Layout.astro';
 import Button from '../components/Button.astro';
 ---
 <Layout>
-  <main class="landing minimal-center">
-    <section class="page-shell">
-      <div class="page-head centered">
-        <h1 class="page-title">Dashboard</h1>
-        <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
+  <main class="min-h-screen bg-canvas-white px-16 py-31 text-obsidian md:px-23">
+    <section class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
+      <div class="mb-31 flex flex-col items-center gap-16 text-center">
+        <h1 class="text-heading leading-heading tracking-heading">Dashboard</h1>
+        <div class="flex flex-wrap justify-center gap-13">
+          <Button id="new-project-btn" variant="primary">Crear proyecto</Button>
+          <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
+        </div>
       </div>
-      <p id="session-label" class="page-subtitle centered">Comprobando sesion...</p>
-      <section class="projects-wrap">
-        <h2 class="projects-title">Tus proyectos</h2>
-        <div id="projects-list" class="projects-list">
-          <p class="empty-projects">Cargando proyectos...</p>
+      <p id="session-label" class="mx-auto max-w-3xl text-center text-slate-mist">Comprobando sesion...</p>
+      <section class="mt-38 text-center">
+        <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Tus proyectos</h2>
+        <div id="projects-list" class="mt-22 grid gap-13">
+          <p class="text-slate-mist">Cargando proyectos...</p>
         </div>
       </section>
     </section>
@@ -22,7 +25,67 @@ import Button from '../components/Button.astro';
     import { supabase } from '../lib/supabase';
     const sessionLabel = document.querySelector('#session-label');
     const logoutBtn = document.querySelector('#logout-btn');
+    const newProjectBtn = document.querySelector('#new-project-btn');
     const projectsList = document.querySelector('#projects-list');
+    let currentSession = null;
+
+    const projectCardClass =
+      'rounded-3xl border border-obsidian bg-canvas-white p-22 text-left shadow-none';
+
+    const setProjectsMessage = (message) => {
+      if (!projectsList) return;
+      projectsList.innerHTML = `<p class="text-slate-mist">${message}</p>`;
+    };
+
+    const storeActiveProject = (project) => {
+      localStorage.setItem('active-project-id', project.id);
+      localStorage.setItem('active-project-name', project.name || 'Proyecto sin titulo');
+      localStorage.setItem('active-project-status', project.status || 'draft');
+    };
+
+    const renderProjects = (projects) => {
+      if (!projectsList) return;
+      if (!projects || projects.length === 0) {
+        setProjectsMessage('Aun no tienes proyectos creados.');
+        return;
+      }
+
+      projectsList.innerHTML = '';
+      projects.forEach((project) => {
+        const card = document.createElement('article');
+        card.className = projectCardClass;
+
+        card.innerHTML = `
+          <div class="flex flex-wrap items-start justify-between gap-13">
+            <div class="space-y-11">
+              <h3 class="text-subheading leading-subheading tracking-subheading font-bold text-obsidian">${project.name || 'Proyecto sin titulo'}</h3>
+              <p class="text-slate-mist">Estado: ${project.status || 'draft'}</p>
+            </div>
+            <div class="flex flex-wrap gap-11">
+              <button data-open-id="${project.id}" class="inline-flex items-center justify-center rounded-full border border-obsidian bg-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-canvas-white transition-opacity hover:opacity-90">Abrir</button>
+              <button data-delete-id="${project.id}" class="inline-flex items-center justify-center rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-obsidian transition-colors hover:bg-obsidian hover:text-canvas-white">Eliminar</button>
+            </div>
+          </div>
+        `;
+
+        projectsList.appendChild(card);
+      });
+    };
+
+    const loadProjects = async () => {
+      if (!supabase || !projectsList) return;
+      const { data: projects, error } = await supabase
+        .from('projects')
+        .select('id, name, status, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        setProjectsMessage('No se pudieron cargar tus proyectos.');
+        return;
+      }
+
+      renderProjects(projects);
+    };
 
     if (!supabase) {
       window.location.href = '/login';
@@ -31,36 +94,64 @@ import Button from '../components/Button.astro';
       if (!data.session) {
         window.location.href = '/login';
       } else if (sessionLabel) {
+        currentSession = data.session;
         sessionLabel.textContent = `Sesion activa como ${data.session.user.email ?? 'usuario'}.`;
-
-        const { data: projects, error } = await supabase
-          .from('projects')
-          .select('id, name, status, created_at')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          projectsList.innerHTML = '<p class="empty-projects">No se pudieron cargar tus proyectos.</p>';
-        } else if (!projects || projects.length === 0) {
-          projectsList.innerHTML = '<p class="empty-projects">Aun no tienes proyectos creados.</p>';
-        } else {
-          projectsList.innerHTML = '';
-          projects.forEach((project) => {
-            const card = document.createElement('article');
-            card.className = 'project-card';
-
-            const title = document.createElement('h3');
-            title.textContent = project.name || 'Proyecto sin titulo';
-
-            const status = document.createElement('p');
-            status.textContent = `Estado: ${project.status}`;
-
-            card.appendChild(title);
-            card.appendChild(status);
-            projectsList.appendChild(card);
-          });
-        }
+        await loadProjects();
       }
     }
+
+    newProjectBtn?.addEventListener('click', async () => {
+      if (!supabase || !currentSession) return;
+      const name = window.prompt('Nombre del proyecto');
+      if (!name || !name.trim()) return;
+
+      const { error } = await supabase.from('projects').insert({
+        name: name.trim(),
+        status: 'draft',
+        user_id: currentSession.user.id
+      });
+
+      if (error) {
+        window.alert(`No se pudo crear el proyecto: ${error.message}`);
+        return;
+      }
+      await loadProjects();
+    });
+
+    projectsList?.addEventListener('click', async (event) => {
+      if (!supabase) return;
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      const openId = target.dataset.openId;
+      if (openId) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('id, name, status')
+          .eq('id', openId)
+          .maybeSingle();
+
+        if (error || !data) {
+          window.alert('No se pudo abrir el proyecto.');
+          return;
+        }
+
+        storeActiveProject(data);
+        window.location.href = `/editor?project=${openId}`;
+      }
+
+      const deleteId = target.dataset.deleteId;
+      if (deleteId) {
+        const confirmed = window.confirm('Se eliminara el proyecto. Deseas continuar?');
+        if (!confirmed) return;
+        const { error } = await supabase.from('projects').delete().eq('id', deleteId);
+        if (error) {
+          window.alert(`No se pudo eliminar: ${error.message}`);
+          return;
+        }
+        await loadProjects();
+      }
+    });
 
     logoutBtn?.addEventListener('click', async () => {
       if (!supabase) return;

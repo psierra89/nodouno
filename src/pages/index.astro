@@ -4,20 +4,20 @@ import Button from '../components/Button.astro';
 import logoFull from '../../assets/logos/Full-Fondo-Blanco.png';
 ---
 <Layout>
-  <main class="landing minimal-center">
-    <section class="minimal-box">
-      <img src={logoFull.src} alt="Nodouno" class="brand-logo-full" />
-      <h1 class="minimal-title">
+  <main class="flex min-h-screen items-center justify-center bg-canvas-white px-16 py-31 text-obsidian md:px-23">
+    <section class="flex w-full max-w-[860px] flex-col items-center gap-22 rounded-3xl border border-obsidian px-22 py-31 text-center md:px-38 md:py-53">
+      <img src={logoFull.src} alt="Nodouno" class="h-auto w-full" />
+      <h1 class="text-[clamp(52px,9vw,187px)] leading-[0.8] tracking-[-0.02em]">
         Calculo de Estructuras.
         <br />
         Simple.
         <br />
         Rapido.
       </h1>
-      <p class="minimal-copy">
+      <p class="max-w-[52ch] text-slate-mist">
         Haz un predimensionamiento de tus plantas de hormigon armado, de manera precisa, clara y rapida.
       </p>
-      <Button href="/login" variant="primary" class="cta-home">Comenzar</Button>
+      <Button href="/login" variant="primary">Comenzar</Button>
     </section>
   </main>
 </Layout>

@@ -14,13 +14,13 @@ const {
 } = Astro.props;
 
 const variantClasses = {
-  primary: 'btn-primary',
-  dark: 'btn-dark',
-  ghost: 'btn-ghost'
+  primary: 'bg-desert-sienna text-canvas-white border border-desert-sienna hover:opacity-90',
+  dark: 'bg-obsidian text-canvas-white border border-obsidian hover:opacity-90',
+  ghost: 'bg-transparent text-obsidian border border-obsidian hover:bg-obsidian hover:text-canvas-white'
 };
 
 const baseClasses =
-  'btn-base';
+  'inline-flex items-center justify-center rounded-full px-22 pt-15 pb-16 text-body-sm leading-none font-bold no-underline transition-opacity disabled:cursor-not-allowed disabled:opacity-45';
 ---
 {
   href ? (

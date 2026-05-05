@@ -3,21 +3,35 @@ import Layout from '../layouts/Layout.astro';
 import Button from '../components/Button.astro';
 ---
 <Layout>
-  <main class="landing">
-    <section class="page-shell">
-      <div class="page-head">
-        <h1 class="page-title">Editor</h1>
+  <main class="min-h-screen bg-canvas-white px-16 py-31 text-obsidian md:px-23">
+    <section class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
+      <div class="mb-31 flex flex-wrap items-center justify-between gap-16">
+        <h1 class="text-heading leading-heading tracking-heading">Editor</h1>
         <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
       </div>
-      <p id="session-label" class="page-subtitle">
+      <p id="session-label" class="max-w-3xl text-slate-mist">
         Base lista para dibujar geometria, correr calculos y dimensionar.
       </p>
+      <div id="active-project" class="mt-23 rounded-3xl border border-obsidian p-22">
+        <h2 class="text-subheading leading-subheading tracking-subheading">Proyecto activo</h2>
+        <p id="active-project-label" class="mt-11 text-slate-mist">Sin seleccionar.</p>
+      </div>
     </section>
   </main>
   <script>
     import { supabase } from '../lib/supabase';
     const sessionLabel = document.querySelector('#session-label');
     const logoutBtn = document.querySelector('#logout-btn');
+    const activeProjectLabel = document.querySelector('#active-project-label');
+
+    const activeProjectName = localStorage.getItem('active-project-name');
+    const activeProjectId = localStorage.getItem('active-project-id');
+    if (activeProjectLabel) {
+      activeProjectLabel.textContent =
+        activeProjectName && activeProjectId
+          ? `${activeProjectName} (${activeProjectId})`
+          : 'Sin seleccionar.';
+    }
 
     if (!supabase) {
       window.location.href = '/login';
