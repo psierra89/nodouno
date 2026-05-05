@@ -13,22 +13,72 @@ import Button from '../components/Button.astro';
         </div>
       </div>
       <p id="session-label" class="max-w-3xl text-slate-mist">
-        Base lista para dibujar geometria, correr calculos y dimensionar.
+        Flujo MVP por fases: dibujo libre, cargas sobre modelo fijo y calculo base.
       </p>
       <div id="active-project" class="mt-23 rounded-3xl border border-obsidian p-22">
         <h2 class="text-subheading leading-subheading tracking-subheading">Proyecto activo</h2>
         <p id="active-project-label" class="mt-11 text-slate-mist">Sin seleccionar.</p>
       </div>
-      <div class="mt-23 grid gap-22 lg:grid-cols-2">
-        <section class="rounded-3xl border border-obsidian p-22">
-          <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Editor 2D base</h2>
-          <form id="drawing-form" class="mt-16 grid gap-11 sm:grid-cols-2">
+
+      <section class="mt-23 rounded-3xl border border-obsidian p-22">
+        <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Flujo por fases</h2>
+        <div class="mt-16 grid gap-11 sm:grid-cols-3">
+          <div data-step-pill="1" class="rounded-full border border-obsidian px-22 pt-15 pb-16 text-center text-body-sm font-bold">Paso 1: Dibujo 2D</div>
+          <div data-step-pill="2" class="rounded-full border border-obsidian px-22 pt-15 pb-16 text-center text-body-sm font-bold">Paso 2: Cargas</div>
+          <div data-step-pill="3" class="rounded-full border border-obsidian px-22 pt-15 pb-16 text-center text-body-sm font-bold">Paso 3: Calculo</div>
+        </div>
+
+        <section id="step-panel-1" data-step-panel="1" class="mt-22 rounded-3xl border border-obsidian p-22">
+          <h3 class="text-subheading leading-subheading tracking-subheading">Paso 1 - Editor de planta 2D libre</h3>
+          <p class="mt-11 text-slate-mist">
+            Dibuja libremente columnas (rectangulos), vigas (lineas) y losas (rectangulo o poligono). Este dibujo se guarda en <code>drawing_data</code>.
+          </p>
+          <div class="mt-16 grid gap-11 lg:grid-cols-2">
+            <div class="grid gap-11">
+              <label class="flex flex-col gap-11">
+                <span class="font-bold">Herramienta</span>
+                <select id="draw-tool" class="rounded-full border border-obsidian px-22 pt-15 pb-16">
+                  <option value="column">Columna (rectangulo)</option>
+                  <option value="beam">Viga (linea)</option>
+                  <option value="slabRect">Losa (rectangulo)</option>
+                  <option value="slabPoly">Losa (poligono)</option>
+                </select>
+              </label>
+              <div class="grid gap-11 sm:grid-cols-2">
+                <label class="flex flex-col gap-11">
+                  <span class="font-bold">Ancho columna (m)</span>
+                  <input id="column-width" type="number" min="0.1" step="0.05" value="0.35" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+                </label>
+                <label class="flex flex-col gap-11">
+                  <span class="font-bold">Alto columna (m)</span>
+                  <input id="column-depth" type="number" min="0.1" step="0.05" value="0.35" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+                </label>
+              </div>
+              <div class="flex flex-wrap gap-11">
+                <Button id="finish-polygon-btn" variant="ghost">Cerrar poligono</Button>
+                <Button id="clear-drawing-btn" variant="ghost">Limpiar dibujo</Button>
+                <Button id="save-drawing-btn" variant="primary">Guardar dibujo</Button>
+              </div>
+            </div>
+            <canvas id="editor-canvas" class="w-full rounded-3xl border border-obsidian" width="760" height="420"></canvas>
+          </div>
+          <p id="editor-status" class="mt-11 text-slate-mist" role="status" aria-live="polite">
+            Dibuja en la planta y guarda para persistir.
+          </p>
+        </section>
+
+        <section id="step-panel-2" data-step-panel="2" class="mt-22 hidden rounded-3xl border border-obsidian p-22">
+          <h3 class="text-subheading leading-subheading tracking-subheading">Paso 2 - Cargas sobre modelo simplificado fijo</h3>
+          <p class="mt-11 text-slate-mist">
+            Para el MVP, el calculo ignora el dibujo libre y usa un modelo rectangular interno fijo (1 losa, 4 vigas, 4 columnas).
+          </p>
+          <form id="loads-form" class="mt-16 grid gap-11 sm:grid-cols-2">
             <label class="flex flex-col gap-11">
-              <span class="font-bold">Luz X (m)</span>
+              <span class="font-bold">Luz modelo X (m)</span>
               <input id="span-x" type="number" min="2" step="0.1" value="5" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
             </label>
             <label class="flex flex-col gap-11">
-              <span class="font-bold">Luz Y (m)</span>
+              <span class="font-bold">Luz modelo Y (m)</span>
               <input id="span-y" type="number" min="2" step="0.1" value="4" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
             </label>
             <label class="flex flex-col gap-11">
@@ -45,33 +95,28 @@ import Button from '../components/Button.astro';
             </label>
           </form>
           <div class="mt-16 flex flex-wrap gap-11">
-            <Button id="generate-sketch-btn" variant="primary">Generar boceto</Button>
-            <Button id="save-drawing-btn" variant="ghost">Guardar dibujo</Button>
-            <Button id="run-calc-btn" variant="dark">Correr calculo</Button>
+            <Button id="build-model-btn" variant="primary">Confirmar modelo simplificado</Button>
           </div>
-          <p id="editor-status" class="mt-11 text-slate-mist" role="status" aria-live="polite">
-            Ajusta parametros y genera el boceto para comenzar.
-          </p>
-          <canvas id="editor-canvas" class="mt-16 w-full rounded-3xl border border-obsidian" width="520" height="340"></canvas>
+          <pre id="model-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
         </section>
-        <section class="rounded-3xl border border-obsidian p-22">
-          <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Resultados y vista 3D</h2>
-          <div id="viewer-3d" class="mt-16 h-[260px] rounded-3xl border border-obsidian"></div>
-          <p id="viewer-status" class="mt-11 text-slate-mist">Esperando boceto para renderizar.</p>
-          <div class="mt-16 grid gap-11">
-            <article class="rounded-3xl border border-obsidian p-16">
-              <h3 class="text-subheading leading-subheading tracking-subheading">Modelo simplificado</h3>
-              <pre id="model-output" class="mt-11 overflow-auto text-body-sm text-slate-mist">Pendiente.</pre>
-            </article>
-            <article class="rounded-3xl border border-obsidian p-16">
-              <h3 class="text-subheading leading-subheading tracking-subheading">Calculos y dimensionado</h3>
-              <pre id="calc-output" class="mt-11 overflow-auto text-body-sm text-slate-mist">Pendiente.</pre>
-            </article>
+
+        <section id="step-panel-3" data-step-panel="3" class="mt-22 hidden rounded-3xl border border-obsidian p-22">
+          <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 - Calculo y resultado base</h3>
+          <p class="mt-11 text-slate-mist">Ejecuta el motor de calculo sobre el modelo simplificado fijo definido en el paso 2.</p>
+          <div class="mt-16 flex flex-wrap gap-11">
+            <Button id="run-calc-btn" variant="dark">Ejecutar calculo</Button>
           </div>
+          <pre id="calc-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
         </section>
-      </div>
+
+        <div class="mt-22 flex flex-wrap items-center justify-between gap-11">
+          <Button id="prev-step-btn" variant="ghost">Anterior</Button>
+          <Button id="next-step-btn" variant="dark">Siguiente</Button>
+        </div>
+      </section>
     </section>
   </main>
+
   <script>
     import { supabase } from '../lib/supabase';
     import { calculateDemands, calculateDesign, calculateLoads } from '../calc';
@@ -79,16 +124,21 @@ import Button from '../components/Button.astro';
     const sessionLabel = document.querySelector('#session-label');
     const logoutBtn = document.querySelector('#logout-btn');
     const activeProjectLabel = document.querySelector('#active-project-label');
-    const drawingForm = document.querySelector('#drawing-form');
-    const generateSketchBtn = document.querySelector('#generate-sketch-btn');
+    const drawToolSelect = document.querySelector('#draw-tool');
+    const finishPolygonBtn = document.querySelector('#finish-polygon-btn');
+    const clearDrawingBtn = document.querySelector('#clear-drawing-btn');
     const saveDrawingBtn = document.querySelector('#save-drawing-btn');
+    const buildModelBtn = document.querySelector('#build-model-btn');
     const runCalcBtn = document.querySelector('#run-calc-btn');
+    const prevStepBtn = document.querySelector('#prev-step-btn');
+    const nextStepBtn = document.querySelector('#next-step-btn');
+    const loadsForm = document.querySelector('#loads-form');
     const editorStatus = document.querySelector('#editor-status');
     const canvas = document.querySelector('#editor-canvas');
-    const viewer3DContainer = document.querySelector('#viewer-3d');
-    const viewerStatus = document.querySelector('#viewer-status');
     const modelOutput = document.querySelector('#model-output');
     const calcOutput = document.querySelector('#calc-output');
+    const stepPanels = Array.from(document.querySelectorAll('[data-step-panel]'));
+    const stepPills = Array.from(document.querySelectorAll('[data-step-pill]'));
 
     const queryProjectId = new URLSearchParams(window.location.search).get('project');
     const activeProjectId = queryProjectId || localStorage.getItem('active-project-id');
@@ -100,8 +150,21 @@ import Button from '../components/Button.astro';
     let simplifiedModel = null;
     /** @type {null | Record<string, any>} */
     let lastResults = null;
-    /** @type {null | (() => void)} */
-    let cleanup3D = null;
+    let currentStep = 1;
+
+    /** @type {'column' | 'beam' | 'slabRect' | 'slabPoly'} */
+    let activeTool = 'column';
+    /** @type {null | { x: number; y: number }} */
+    let dragStart = null;
+    /** @type {Array<{ x: number; y: number }>} */
+    let activePolygon = [];
+
+    /** @type {{ version: number; createdAt: string; freeDrawing: { columns: Array<any>; beams: Array<any>; slabs: Array<any> } }} */
+    let freeDrawing = {
+      version: 1,
+      createdAt: new Date().toISOString(),
+      freeDrawing: { columns: [], beams: [], slabs: [] }
+    };
 
     const setEditorStatus = (message, isError = false) => {
       if (!editorStatus) return;
@@ -110,20 +173,57 @@ import Button from '../components/Button.astro';
       editorStatus.classList.toggle('text-slate-mist', !isError);
     };
 
-    const setViewerStatus = (message, isError = false) => {
-      if (!viewerStatus) return;
-      viewerStatus.textContent = message;
-      viewerStatus.classList.toggle('text-desert-sienna', isError);
-      viewerStatus.classList.toggle('text-slate-mist', !isError);
+    const setStep = (step) => {
+      currentStep = Math.min(3, Math.max(1, step));
+      stepPanels.forEach((panel) => {
+        const panelStep = Number(panel.getAttribute('data-step-panel'));
+        panel.classList.toggle('hidden', panelStep !== currentStep);
+      });
+      stepPills.forEach((pill) => {
+        const pillStep = Number(pill.getAttribute('data-step-pill'));
+        const isActive = pillStep === currentStep;
+        pill.classList.toggle('bg-obsidian', isActive);
+        pill.classList.toggle('text-canvas-white', isActive);
+      });
+      if (nextStepBtn instanceof HTMLElement) {
+        nextStepBtn.textContent = currentStep === 3 ? 'Finalizado' : 'Siguiente';
+      }
     };
 
-    const parseNumber = (selector, fallback) => {
-      const element = drawingForm?.querySelector(selector);
+    const parseNumber = (selector, fallback, source = loadsForm) => {
+      const element = source?.querySelector(selector);
       const value = Number((element instanceof HTMLInputElement && element.value) || fallback);
       return Number.isFinite(value) ? value : fallback;
     };
 
-    const renderCanvas = (data) => {
+    const getCanvasPoint = (event) => {
+      if (!(canvas instanceof HTMLCanvasElement)) return null;
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(canvas.width, event.clientX - rect.left)),
+        y: Math.max(0, Math.min(canvas.height, event.clientY - rect.top))
+      };
+    };
+
+    const drawGrid = (context) => {
+      if (!(canvas instanceof HTMLCanvasElement)) return;
+      context.strokeStyle = '#f0f0f0';
+      context.lineWidth = 1;
+      for (let x = 0; x <= canvas.width; x += 40) {
+        context.beginPath();
+        context.moveTo(x, 0);
+        context.lineTo(x, canvas.height);
+        context.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += 40) {
+        context.beginPath();
+        context.moveTo(0, y);
+        context.lineTo(canvas.width, y);
+        context.stroke();
+      }
+    };
+
+    const renderCanvas = () => {
       if (!(canvas instanceof HTMLCanvasElement)) return;
       const context = canvas.getContext('2d');
       if (!context) return;
@@ -131,65 +231,81 @@ import Button from '../components/Button.astro';
       context.clearRect(0, 0, canvas.width, canvas.height);
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, canvas.width, canvas.height);
-      context.strokeStyle = '#000d10';
-      context.lineWidth = 2;
+      drawGrid(context);
 
-      const margin = 30;
-      const slabWidth = canvas.width - margin * 2;
-      const slabHeight = canvas.height - margin * 2;
-      context.strokeRect(margin, margin, slabWidth, slabHeight);
-      context.font = '13px HelveticaNowDisplay, Arial, sans-serif';
-      context.fillStyle = '#000d10';
-      context.fillText(`Losa ${data.slab.spanXM}m x ${data.slab.spanYM}m`, margin, 20);
-
-      context.fillStyle = '#8e8e95';
-      data.beams.forEach((beam) => {
-        if (beam.direction === 'x') {
-          const y = margin + slabHeight * beam.offset;
-          context.fillRect(margin + 4, y - 5, slabWidth - 8, 10);
-        } else {
-          const x = margin + slabWidth * beam.offset;
-          context.fillRect(x - 5, margin + 4, 10, slabHeight - 8);
+      freeDrawing.freeDrawing.slabs.forEach((slab) => {
+        context.fillStyle = 'rgba(142, 142, 149, 0.25)';
+        context.strokeStyle = '#8e8e95';
+        context.lineWidth = 2;
+        if (slab.type === 'rect') {
+          const width = slab.endX - slab.startX;
+          const height = slab.endY - slab.startY;
+          context.fillRect(slab.startX, slab.startY, width, height);
+          context.strokeRect(slab.startX, slab.startY, width, height);
+        } else if (Array.isArray(slab.points) && slab.points.length > 2) {
+          context.beginPath();
+          slab.points.forEach((point, index) => {
+            if (index === 0) context.moveTo(point.x, point.y);
+            else context.lineTo(point.x, point.y);
+          });
+          context.closePath();
+          context.fill();
+          context.stroke();
         }
       });
 
-      context.fillStyle = '#bc7155';
-      data.columns.forEach((column) => {
-        const x = margin + slabWidth * column.x;
-        const y = margin + slabHeight * column.y;
-        context.fillRect(x - 8, y - 8, 16, 16);
+      context.strokeStyle = '#000d10';
+      context.lineWidth = 3;
+      freeDrawing.freeDrawing.beams.forEach((beam) => {
+        context.beginPath();
+        context.moveTo(beam.startX, beam.startY);
+        context.lineTo(beam.endX, beam.endY);
+        context.stroke();
       });
+
+      context.fillStyle = '#bc7155';
+      freeDrawing.freeDrawing.columns.forEach((column) => {
+        context.fillRect(column.startX, column.startY, column.widthPx, column.heightPx);
+      });
+
+      if (activePolygon.length > 0) {
+        context.strokeStyle = '#bc7155';
+        context.lineWidth = 2;
+        context.beginPath();
+        activePolygon.forEach((point, index) => {
+          if (index === 0) context.moveTo(point.x, point.y);
+          else context.lineTo(point.x, point.y);
+        });
+        context.stroke();
+        activePolygon.forEach((point) => {
+          context.beginPath();
+          context.arc(point.x, point.y, 4, 0, Math.PI * 2);
+          context.fill();
+        });
+      }
     };
 
-    const buildModelFromForm = () => {
+    const closeActivePolygon = () => {
+      if (activePolygon.length < 3) {
+        setEditorStatus('Para cerrar una losa poligonal se requieren al menos 3 puntos.', true);
+        return;
+      }
+      freeDrawing.freeDrawing.slabs.push({
+        type: 'polygon',
+        points: activePolygon.map((point) => ({ x: point.x, y: point.y }))
+      });
+      activePolygon = [];
+      freeDrawing.createdAt = new Date().toISOString();
+      renderCanvas();
+      setEditorStatus('Losa poligonal agregada al dibujo.');
+    };
+
+    const buildFixedSimplifiedModel = () => {
       const spanXM = parseNumber('#span-x', 5);
       const spanYM = parseNumber('#span-y', 4);
       const slabThicknessM = parseNumber('#slab-thickness', 0.2);
       const deadLoadKnm2 = parseNumber('#dead-load', 1.5);
       const liveLoadKnm2 = parseNumber('#live-load', 2);
-
-      const beams = [
-        { direction: 'x', spanM: spanXM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanYM / 2, offset: 0.1 },
-        { direction: 'x', spanM: spanXM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanYM / 2, offset: 0.9 },
-        { direction: 'y', spanM: spanYM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanXM / 2, offset: 0.1 },
-        { direction: 'y', spanM: spanYM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanXM / 2, offset: 0.9 }
-      ];
-
-      const columns = [
-        { widthM: 0.35, depthM: 0.35, floors: 2, x: 0.08, y: 0.08 },
-        { widthM: 0.35, depthM: 0.35, floors: 2, x: 0.92, y: 0.08 },
-        { widthM: 0.35, depthM: 0.35, floors: 2, x: 0.08, y: 0.92 },
-        { widthM: 0.35, depthM: 0.35, floors: 2, x: 0.92, y: 0.92 }
-      ];
-
-      drawingData = {
-        version: 1,
-        createdAt: new Date().toISOString(),
-        slab: { spanXM, spanYM, thicknessM: slabThicknessM },
-        loads: { deadLoadKnm2, liveLoadKnm2 },
-        beams,
-        columns
-      };
 
       simplifiedModel = {
         slab: {
@@ -198,117 +314,30 @@ import Button from '../components/Button.astro';
           deadLoadKnm2,
           liveLoadKnm2
         },
-        beams: beams.map(({ spanM, widthM, depthM, tributaryWidthM }) => ({
-          spanM,
-          widthM,
-          depthM,
-          tributaryWidthM
-        })),
-        columns: columns.map(({ widthM, depthM, floors }) => ({
-          widthM,
-          depthM,
-          floors
-        })),
+        beams: [
+          { spanM: spanXM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanYM / 2 },
+          { spanM: spanXM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanYM / 2 },
+          { spanM: spanYM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanXM / 2 },
+          { spanM: spanYM, widthM: 0.25, depthM: 0.5, tributaryWidthM: spanXM / 2 }
+        ],
+        columns: [
+          { widthM: 0.35, depthM: 0.35, floors: 2 },
+          { widthM: 0.35, depthM: 0.35, floors: 2 },
+          { widthM: 0.35, depthM: 0.35, floors: 2 },
+          { widthM: 0.35, depthM: 0.35, floors: 2 }
+        ],
         materials: {
           fckMpa: 25,
           fyMpa: 420,
           phiFlexion: 0.9,
           phiShear: 0.75
-        }
+        },
+        source: 'fixed_mvp_rectangular'
       };
 
-      renderCanvas(drawingData);
       if (modelOutput) {
         modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
       }
-    };
-
-    const mount3D = async (data) => {
-      if (!(viewer3DContainer instanceof HTMLDivElement)) return;
-      if (cleanup3D) cleanup3D();
-
-      const THREE = await import('three');
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color('#ffffff');
-      const camera = new THREE.PerspectiveCamera(50, viewer3DContainer.clientWidth / viewer3DContainer.clientHeight, 0.1, 1000);
-      camera.position.set(8, 8, 10);
-      camera.lookAt(0, 0, 0);
-
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(viewer3DContainer.clientWidth, viewer3DContainer.clientHeight);
-      viewer3DContainer.innerHTML = '';
-      viewer3DContainer.appendChild(renderer.domElement);
-
-      const ambient = new THREE.AmbientLight('#ffffff', 0.7);
-      const directional = new THREE.DirectionalLight('#ffffff', 1.1);
-      directional.position.set(5, 8, 5);
-      scene.add(ambient, directional);
-
-      const objects = [];
-      const slabGeom = new THREE.BoxGeometry(data.slab.spanM, 0.2, data.slab.spanM);
-      const slabMat = new THREE.MeshStandardMaterial({ color: '#d9d9de' });
-      const slabMesh = new THREE.Mesh(slabGeom, slabMat);
-      scene.add(slabMesh);
-      objects.push(slabMesh);
-
-      data.columns.forEach((column, index) => {
-        const geom = new THREE.BoxGeometry(column.widthM, 2.2, column.depthM);
-        const mat = new THREE.MeshStandardMaterial({ color: '#bc7155' });
-        const mesh = new THREE.Mesh(geom, mat);
-        const signX = index % 2 === 0 ? -1 : 1;
-        const signZ = index < 2 ? -1 : 1;
-        mesh.position.set(signX * (data.slab.spanM / 2 - 0.4), -1.2, signZ * (data.slab.spanM / 2 - 0.4));
-        scene.add(mesh);
-        objects.push(mesh);
-      });
-
-      data.beams.forEach((beam, index) => {
-        const isX = index < 2;
-        const length = beam.spanM;
-        const geom = isX ? new THREE.BoxGeometry(length, 0.35, 0.25) : new THREE.BoxGeometry(0.25, 0.35, length);
-        const mat = new THREE.MeshStandardMaterial({ color: '#8e8e95' });
-        const mesh = new THREE.Mesh(geom, mat);
-        const offset = index % 2 === 0 ? -data.slab.spanM / 2 + 0.4 : data.slab.spanM / 2 - 0.4;
-        if (isX) {
-          mesh.position.set(0, -0.35, offset);
-        } else {
-          mesh.position.set(offset, -0.35, 0);
-        }
-        scene.add(mesh);
-        objects.push(mesh);
-      });
-
-      let frameId = 0;
-      const animate = () => {
-        frameId = window.requestAnimationFrame(animate);
-        scene.rotation.y += 0.003;
-        renderer.render(scene, camera);
-      };
-      animate();
-      setViewerStatus('Vista 3D cargada.');
-
-      const handleResize = () => {
-        if (!(viewer3DContainer instanceof HTMLDivElement)) return;
-        camera.aspect = viewer3DContainer.clientWidth / viewer3DContainer.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(viewer3DContainer.clientWidth, viewer3DContainer.clientHeight);
-      };
-      window.addEventListener('resize', handleResize);
-
-      cleanup3D = () => {
-        window.cancelAnimationFrame(frameId);
-        window.removeEventListener('resize', handleResize);
-        objects.forEach((mesh) => {
-          mesh.geometry.dispose();
-          if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((material) => material.dispose());
-          } else {
-            mesh.material.dispose();
-          }
-        });
-        renderer.dispose();
-        viewer3DContainer.innerHTML = '';
-      };
     };
 
     const persistProject = async (values) => {
@@ -343,56 +372,138 @@ import Button from '../components/Button.astro';
         .eq('id', activeProjectId)
         .maybeSingle();
 
-      if (projectData?.drawing_data && projectData?.simplified_model) {
+      if (projectData?.drawing_data?.freeDrawing) {
         drawingData = projectData.drawing_data;
-        simplifiedModel = projectData.simplified_model;
-        renderCanvas(drawingData);
-        if (modelOutput) {
-          modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
-        }
-        await mount3D(simplifiedModel);
+        freeDrawing = drawingData;
       }
-
+      if (projectData?.simplified_model) {
+        simplifiedModel = projectData.simplified_model;
+        if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
+      }
       if (projectData?.calculations || projectData?.dimensioning) {
         lastResults = {
           calculations: projectData.calculations,
           dimensioning: projectData.dimensioning
         };
-        if (calcOutput) {
-          calcOutput.textContent = JSON.stringify(lastResults, null, 2);
-        }
+        if (calcOutput) calcOutput.textContent = JSON.stringify(lastResults, null, 2);
       }
     }
 
-    generateSketchBtn?.addEventListener('click', async () => {
-      buildModelFromForm();
-      if (simplifiedModel) {
-        await mount3D(simplifiedModel);
+    setStep(1);
+    renderCanvas();
+
+    drawToolSelect?.addEventListener('change', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement)) return;
+      activeTool = /** @type {'column' | 'beam' | 'slabRect' | 'slabPoly'} */ (target.value);
+      if (activeTool !== 'slabPoly') activePolygon = [];
+      setEditorStatus(`Herramienta activa: ${target.options[target.selectedIndex]?.text ?? target.value}.`);
+      renderCanvas();
+    });
+
+    canvas?.addEventListener('pointerdown', (event) => {
+      const point = getCanvasPoint(event);
+      if (!point) return;
+      if (activeTool === 'slabPoly') {
+        activePolygon.push(point);
+        renderCanvas();
+        return;
       }
-      setEditorStatus('Boceto generado. Guarda para persistir drawing_data y simplified_model.');
+      dragStart = point;
+    });
+
+    canvas?.addEventListener('pointerup', (event) => {
+      if (!dragStart) return;
+      const endPoint = getCanvasPoint(event);
+      if (!endPoint) return;
+
+      const startX = Math.min(dragStart.x, endPoint.x);
+      const startY = Math.min(dragStart.y, endPoint.y);
+      const widthPx = Math.abs(endPoint.x - dragStart.x);
+      const heightPx = Math.abs(endPoint.y - dragStart.y);
+
+      if (activeTool === 'column' && widthPx > 4 && heightPx > 4) {
+        const columnWidthM = parseNumber('#column-width', 0.35, document);
+        const columnDepthM = parseNumber('#column-depth', 0.35, document);
+        freeDrawing.freeDrawing.columns.push({
+          startX,
+          startY,
+          widthPx,
+          heightPx,
+          widthM: columnWidthM,
+          depthM: columnDepthM
+        });
+      } else if (activeTool === 'beam') {
+        freeDrawing.freeDrawing.beams.push({
+          startX: dragStart.x,
+          startY: dragStart.y,
+          endX: endPoint.x,
+          endY: endPoint.y
+        });
+      } else if (activeTool === 'slabRect' && widthPx > 8 && heightPx > 8) {
+        freeDrawing.freeDrawing.slabs.push({
+          type: 'rect',
+          startX,
+          startY,
+          endX: startX + widthPx,
+          endY: startY + heightPx
+        });
+      }
+
+      dragStart = null;
+      freeDrawing.createdAt = new Date().toISOString();
+      renderCanvas();
+    });
+
+    finishPolygonBtn?.addEventListener('click', () => {
+      closeActivePolygon();
+    });
+
+    clearDrawingBtn?.addEventListener('click', () => {
+      freeDrawing = {
+        version: 1,
+        createdAt: new Date().toISOString(),
+        freeDrawing: { columns: [], beams: [], slabs: [] }
+      };
+      activePolygon = [];
+      renderCanvas();
+      setEditorStatus('Dibujo libre limpiado.');
     });
 
     saveDrawingBtn?.addEventListener('click', async () => {
-      if (!drawingData || !simplifiedModel) {
-        setEditorStatus('Genera primero un boceto antes de guardar.', true);
-        return;
-      }
-      setEditorStatus('Guardando dibujo...');
+      drawingData = {
+        version: 2,
+        createdAt: new Date().toISOString(),
+        freeDrawing: freeDrawing.freeDrawing
+      };
+      setEditorStatus('Guardando drawing_data...');
       const { error } = await persistProject({
         drawing_data: drawingData,
-        simplified_model: simplifiedModel,
         status: 'drawn'
       });
       if (error) {
         setEditorStatus(`Error al guardar dibujo: ${error.message}`, true);
         return;
       }
-      setEditorStatus('Dibujo guardado correctamente.');
+      setEditorStatus('Dibujo libre guardado correctamente.');
+    });
+
+    buildModelBtn?.addEventListener('click', async () => {
+      buildFixedSimplifiedModel();
+      const { error } = await persistProject({
+        simplified_model: simplifiedModel,
+        status: 'loads_defined'
+      });
+      if (error) {
+        setEditorStatus(`Modelo simplificado generado, pero no se pudo guardar: ${error.message}`, true);
+        return;
+      }
+      setEditorStatus('Modelo simplificado fijo guardado para el MVP.');
     });
 
     runCalcBtn?.addEventListener('click', async () => {
       if (!simplifiedModel) {
-        setEditorStatus('Genera y guarda un modelo antes de calcular.', true);
+        setEditorStatus('Primero confirma el modelo simplificado en el paso 2.', true);
         return;
       }
       setEditorStatus('Ejecutando calculo y dimensionamiento...');
@@ -422,14 +533,30 @@ import Button from '../components/Button.astro';
       setEditorStatus('Calculo y dimensionamiento persistidos en el proyecto.');
     });
 
+    prevStepBtn?.addEventListener('click', () => {
+      if (currentStep > 1) setStep(currentStep - 1);
+    });
+
+    nextStepBtn?.addEventListener('click', async () => {
+      if (currentStep === 1 && activeProjectId) {
+        drawingData = {
+          version: 2,
+          createdAt: new Date().toISOString(),
+          freeDrawing: freeDrawing.freeDrawing
+        };
+        await persistProject({ drawing_data: drawingData, status: 'drawn' });
+      }
+      if (currentStep === 2 && !simplifiedModel) {
+        buildFixedSimplifiedModel();
+        await persistProject({ simplified_model: simplifiedModel, status: 'loads_defined' });
+      }
+      if (currentStep < 3) setStep(currentStep + 1);
+    });
+
     logoutBtn?.addEventListener('click', async () => {
       if (!supabase) return;
       await supabase.auth.signOut();
       window.location.href = '/login';
-    });
-
-    window.addEventListener('beforeunload', () => {
-      if (cleanup3D) cleanup3D();
     });
   </script>
 </Layout>
