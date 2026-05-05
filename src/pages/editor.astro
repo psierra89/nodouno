@@ -29,41 +29,66 @@ import Button from '../components/Button.astro';
         </div>
 
         <section id="step-panel-1" data-step-panel="1" class="mt-22 rounded-3xl border border-obsidian p-22">
-          <h3 class="text-subheading leading-subheading tracking-subheading">Paso 1 - Editor de planta 2D libre</h3>
+          <h3 class="text-subheading leading-subheading tracking-subheading">Paso 1 - Editor de planta 2D</h3>
           <p class="mt-11 text-slate-mist">
-            Dibuja libremente columnas (rectangulos), vigas (lineas) y losas (rectangulo o poligono). Este dibujo se guarda en <code>drawing_data</code>.
+            Herramientas separadas para columnas, vigas y losas, con seleccion, movimiento y guardado de entidades tipadas en <code>drawing_data</code>.
           </p>
-          <div class="mt-16 grid gap-11 lg:grid-cols-2">
+          <div class="mt-16 grid gap-16 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div class="grid gap-11">
-              <label class="flex flex-col gap-11">
-                <span class="font-bold">Herramienta</span>
-                <select id="draw-tool" class="rounded-full border border-obsidian px-22 pt-15 pb-16">
-                  <option value="column">Columna (rectangulo)</option>
-                  <option value="beam">Viga (linea)</option>
-                  <option value="slabRect">Losa (rectangulo)</option>
-                  <option value="slabPoly">Losa (poligono)</option>
-                </select>
-              </label>
-              <div class="grid gap-11 sm:grid-cols-2">
-                <label class="flex flex-col gap-11">
-                  <span class="font-bold">Ancho columna (m)</span>
-                  <input id="column-width" type="number" min="0.1" step="0.05" value="0.35" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
-                </label>
-                <label class="flex flex-col gap-11">
-                  <span class="font-bold">Alto columna (m)</span>
-                  <input id="column-depth" type="number" min="0.1" step="0.05" value="0.35" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
-                </label>
+              <div class="flex flex-wrap gap-11">
+                <Button id="tool-select-btn" variant="ghost">Seleccionar</Button>
+                <Button id="tool-column-btn" variant="ghost">Columna</Button>
+                <Button id="tool-beam-btn" variant="ghost">Viga</Button>
+                <Button id="tool-slab-rect-btn" variant="ghost">Losa rect</Button>
+                <Button id="tool-slab-poly-btn" variant="ghost">Losa poligono</Button>
               </div>
               <div class="flex flex-wrap gap-11">
                 <Button id="finish-polygon-btn" variant="ghost">Cerrar poligono</Button>
+                <Button id="delete-selected-btn" variant="ghost">Eliminar seleccionado</Button>
                 <Button id="clear-drawing-btn" variant="ghost">Limpiar dibujo</Button>
                 <Button id="save-drawing-btn" variant="primary">Guardar dibujo</Button>
               </div>
+              <div class="flex flex-wrap items-center gap-11 rounded-3xl border border-obsidian p-16">
+                <label class="flex items-center gap-11">
+                  <input id="snap-enabled" type="checkbox" checked />
+                  <span class="font-bold">Snap a grid</span>
+                </label>
+                <label class="flex items-center gap-11">
+                  <span class="font-bold">Grid (px)</span>
+                  <input id="grid-size" type="number" min="8" max="80" step="4" value="20" class="w-28 rounded-full border border-obsidian px-16 py-8" />
+                </label>
+              </div>
+              <canvas id="editor-canvas" class="w-full rounded-3xl border border-obsidian" width="860" height="500"></canvas>
             </div>
-            <canvas id="editor-canvas" class="w-full rounded-3xl border border-obsidian" width="760" height="420"></canvas>
+            <aside class="rounded-3xl border border-obsidian p-16">
+              <h4 class="text-heading-sm leading-heading-sm tracking-heading-sm">Propiedades</h4>
+              <p id="selection-summary" class="mt-11 text-slate-mist">Sin seleccion.</p>
+              <div id="properties-panel" class="mt-11 grid gap-11">
+                <label class="flex flex-col gap-8">
+                  <span class="font-bold">Ancho columna (m)</span>
+                  <input id="prop-column-width" type="number" min="0.1" step="0.05" value="0.35" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+                </label>
+                <label class="flex flex-col gap-8">
+                  <span class="font-bold">Alto columna (m)</span>
+                  <input id="prop-column-depth" type="number" min="0.1" step="0.05" value="0.35" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+                </label>
+                <label class="flex flex-col gap-8">
+                  <span class="font-bold">Seccion viga (m)</span>
+                  <input id="prop-beam-width" type="number" min="0.1" step="0.05" value="0.25" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+                </label>
+                <label class="flex flex-col gap-8">
+                  <span class="font-bold">Canto viga (m)</span>
+                  <input id="prop-beam-depth" type="number" min="0.1" step="0.05" value="0.5" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+                </label>
+                <label class="flex flex-col gap-8">
+                  <span class="font-bold">Espesor losa (m)</span>
+                  <input id="prop-slab-thickness" type="number" min="0.1" step="0.01" value="0.2" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+                </label>
+              </div>
+            </aside>
           </div>
           <p id="editor-status" class="mt-11 text-slate-mist" role="status" aria-live="polite">
-            Dibuja en la planta y guarda para persistir.
+            Selecciona herramienta para dibujar en planta.
           </p>
         </section>
 
@@ -124,10 +149,23 @@ import Button from '../components/Button.astro';
     const sessionLabel = document.querySelector('#session-label');
     const logoutBtn = document.querySelector('#logout-btn');
     const activeProjectLabel = document.querySelector('#active-project-label');
-    const drawToolSelect = document.querySelector('#draw-tool');
+    const toolSelectBtn = document.querySelector('#tool-select-btn');
+    const toolColumnBtn = document.querySelector('#tool-column-btn');
+    const toolBeamBtn = document.querySelector('#tool-beam-btn');
+    const toolSlabRectBtn = document.querySelector('#tool-slab-rect-btn');
+    const toolSlabPolyBtn = document.querySelector('#tool-slab-poly-btn');
     const finishPolygonBtn = document.querySelector('#finish-polygon-btn');
+    const deleteSelectedBtn = document.querySelector('#delete-selected-btn');
     const clearDrawingBtn = document.querySelector('#clear-drawing-btn');
     const saveDrawingBtn = document.querySelector('#save-drawing-btn');
+    const snapEnabledCheckbox = document.querySelector('#snap-enabled');
+    const gridSizeInput = document.querySelector('#grid-size');
+    const selectionSummary = document.querySelector('#selection-summary');
+    const propColumnWidth = document.querySelector('#prop-column-width');
+    const propColumnDepth = document.querySelector('#prop-column-depth');
+    const propBeamWidth = document.querySelector('#prop-beam-width');
+    const propBeamDepth = document.querySelector('#prop-beam-depth');
+    const propSlabThickness = document.querySelector('#prop-slab-thickness');
     const buildModelBtn = document.querySelector('#build-model-btn');
     const runCalcBtn = document.querySelector('#run-calc-btn');
     const prevStepBtn = document.querySelector('#prev-step-btn');
@@ -152,17 +190,31 @@ import Button from '../components/Button.astro';
     let lastResults = null;
     let currentStep = 1;
 
-    /** @type {'column' | 'beam' | 'slabRect' | 'slabPoly'} */
-    let activeTool = 'column';
+    /**
+     * @typedef {'select' | 'column' | 'beam' | 'slabRect' | 'slabPoly'} Tool
+     * @typedef {{ id: string; type: 'column'; x: number; y: number; width: number; height: number; props: { widthM: number; depthM: number } }} ColumnEntity
+     * @typedef {{ id: string; type: 'beam'; x1: number; y1: number; x2: number; y2: number; props: { widthM: number; depthM: number } }} BeamEntity
+     * @typedef {{ id: string; type: 'slab'; shape: 'rect'; x: number; y: number; width: number; height: number; props: { thicknessM: number } } | { id: string; type: 'slab'; shape: 'polygon'; points: Array<{ x: number; y: number }>; props: { thicknessM: number } }} SlabEntity
+     * @typedef {{ version: number; createdAt: string; grid: { size: number; snapEnabled: boolean }; entities: { columns: ColumnEntity[]; beams: BeamEntity[]; slabs: SlabEntity[] }; freeDrawing: { columns: Array<any>; beams: Array<any>; slabs: Array<any> } }} DrawingState
+     */
+
+    /** @type {Tool} */
+    let activeTool = 'select';
     /** @type {null | { x: number; y: number }} */
     let dragStart = null;
     /** @type {Array<{ x: number; y: number }>} */
     let activePolygon = [];
+    /** @type {null | { type: 'column' | 'beam' | 'slab'; id: string }} */
+    let selectedEntityRef = null;
+    /** @type {null | { startPointer: { x: number; y: number }; startEntity: any }} */
+    let dragSelectionState = null;
 
-    /** @type {{ version: number; createdAt: string; freeDrawing: { columns: Array<any>; beams: Array<any>; slabs: Array<any> } }} */
-    let freeDrawing = {
-      version: 1,
+    /** @type {DrawingState} */
+    let drawingState = {
+      version: 3,
       createdAt: new Date().toISOString(),
+      grid: { size: 20, snapEnabled: true },
+      entities: { columns: [], beams: [], slabs: [] },
       freeDrawing: { columns: [], beams: [], slabs: [] }
     };
 
@@ -196,6 +248,8 @@ import Button from '../components/Button.astro';
       return Number.isFinite(value) ? value : fallback;
     };
 
+    const toFixedNumber = (value, digits = 3) => Number(value.toFixed(digits));
+
     const getCanvasPoint = (event) => {
       if (!(canvas instanceof HTMLCanvasElement)) return null;
       const rect = canvas.getBoundingClientRect();
@@ -205,21 +259,158 @@ import Button from '../components/Button.astro';
       };
     };
 
+    const normalizeRect = (x1, y1, x2, y2) => ({
+      x: Math.min(x1, x2),
+      y: Math.min(y1, y2),
+      width: Math.abs(x2 - x1),
+      height: Math.abs(y2 - y1)
+    });
+
+    const nextId = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+
+    const snapPoint = (point) => {
+      const grid = Math.max(8, Number(drawingState.grid.size) || 20);
+      if (!drawingState.grid.snapEnabled) return point;
+      return {
+        x: Math.round(point.x / grid) * grid,
+        y: Math.round(point.y / grid) * grid
+      };
+    };
+
     const drawGrid = (context) => {
       if (!(canvas instanceof HTMLCanvasElement)) return;
+      const grid = Math.max(8, Number(drawingState.grid.size) || 20);
       context.strokeStyle = '#f0f0f0';
       context.lineWidth = 1;
-      for (let x = 0; x <= canvas.width; x += 40) {
+      for (let x = 0; x <= canvas.width; x += grid) {
         context.beginPath();
         context.moveTo(x, 0);
         context.lineTo(x, canvas.height);
         context.stroke();
       }
-      for (let y = 0; y <= canvas.height; y += 40) {
+      for (let y = 0; y <= canvas.height; y += grid) {
         context.beginPath();
         context.moveTo(0, y);
         context.lineTo(canvas.width, y);
         context.stroke();
+      }
+    };
+
+    const toLegacyFreeDrawing = () => {
+      const columns = drawingState.entities.columns.map((column) => ({
+        startX: column.x,
+        startY: column.y,
+        widthPx: column.width,
+        heightPx: column.height,
+        widthM: column.props.widthM,
+        depthM: column.props.depthM
+      }));
+      const beams = drawingState.entities.beams.map((beam) => ({
+        startX: beam.x1,
+        startY: beam.y1,
+        endX: beam.x2,
+        endY: beam.y2,
+        widthM: beam.props.widthM,
+        depthM: beam.props.depthM
+      }));
+      const slabs = drawingState.entities.slabs.map((slab) =>
+        slab.shape === 'rect'
+          ? {
+              type: 'rect',
+              startX: slab.x,
+              startY: slab.y,
+              endX: slab.x + slab.width,
+              endY: slab.y + slab.height,
+              thicknessM: slab.props.thicknessM
+            }
+          : {
+              type: 'polygon',
+              points: slab.points.map((point) => ({ x: point.x, y: point.y })),
+              thicknessM: slab.props.thicknessM
+            }
+      );
+      return { columns, beams, slabs };
+    };
+
+    const refreshDerivedDrawing = () => {
+      drawingState.createdAt = new Date().toISOString();
+      drawingState.freeDrawing = toLegacyFreeDrawing();
+    };
+
+    const pointInPolygon = (point, polygon) => {
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].x;
+        const yi = polygon[i].y;
+        const xj = polygon[j].x;
+        const yj = polygon[j].y;
+        const intersect = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi + 0.000001) + xi;
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    };
+
+    const distancePointToSegment = (point, a, b) => {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      if (dx === 0 && dy === 0) return Math.hypot(point.x - a.x, point.y - a.y);
+      const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)));
+      const px = a.x + t * dx;
+      const py = a.y + t * dy;
+      return Math.hypot(point.x - px, point.y - py);
+    };
+
+    const findEntityAtPoint = (point) => {
+      for (let i = drawingState.entities.columns.length - 1; i >= 0; i -= 1) {
+        const column = drawingState.entities.columns[i];
+        if (point.x >= column.x && point.x <= column.x + column.width && point.y >= column.y && point.y <= column.y + column.height) {
+          return { type: 'column', id: column.id };
+        }
+      }
+      for (let i = drawingState.entities.beams.length - 1; i >= 0; i -= 1) {
+        const beam = drawingState.entities.beams[i];
+        const distance = distancePointToSegment(point, { x: beam.x1, y: beam.y1 }, { x: beam.x2, y: beam.y2 });
+        if (distance < 8) return { type: 'beam', id: beam.id };
+      }
+      for (let i = drawingState.entities.slabs.length - 1; i >= 0; i -= 1) {
+        const slab = drawingState.entities.slabs[i];
+        if (slab.shape === 'rect') {
+          if (point.x >= slab.x && point.x <= slab.x + slab.width && point.y >= slab.y && point.y <= slab.y + slab.height) {
+            return { type: 'slab', id: slab.id };
+          }
+        } else if (pointInPolygon(point, slab.points)) {
+          return { type: 'slab', id: slab.id };
+        }
+      }
+      return null;
+    };
+
+    const getSelectedEntity = () => {
+      if (!selectedEntityRef) return null;
+      const listKey = `${selectedEntityRef.type}s`;
+      const list = drawingState.entities[listKey];
+      if (!Array.isArray(list)) return null;
+      return list.find((item) => item.id === selectedEntityRef.id) ?? null;
+    };
+
+    const updatePropertiesPanel = () => {
+      const selected = getSelectedEntity();
+      if (!selectionSummary) return;
+      if (!selected) {
+        selectionSummary.textContent = 'Sin seleccion.';
+        return;
+      }
+      selectionSummary.textContent = `${selected.type.toUpperCase()} ${selected.id.slice(-4)}`;
+      if (selected.type === 'column') {
+        if (propColumnWidth instanceof HTMLInputElement) propColumnWidth.value = String(selected.props.widthM);
+        if (propColumnDepth instanceof HTMLInputElement) propColumnDepth.value = String(selected.props.depthM);
+      }
+      if (selected.type === 'beam') {
+        if (propBeamWidth instanceof HTMLInputElement) propBeamWidth.value = String(selected.props.widthM);
+        if (propBeamDepth instanceof HTMLInputElement) propBeamDepth.value = String(selected.props.depthM);
+      }
+      if (selected.type === 'slab' && propSlabThickness instanceof HTMLInputElement) {
+        propSlabThickness.value = String(selected.props.thicknessM);
       }
     };
 
@@ -233,15 +424,13 @@ import Button from '../components/Button.astro';
       context.fillRect(0, 0, canvas.width, canvas.height);
       drawGrid(context);
 
-      freeDrawing.freeDrawing.slabs.forEach((slab) => {
+      drawingState.entities.slabs.forEach((slab) => {
         context.fillStyle = 'rgba(142, 142, 149, 0.25)';
         context.strokeStyle = '#8e8e95';
-        context.lineWidth = 2;
-        if (slab.type === 'rect') {
-          const width = slab.endX - slab.startX;
-          const height = slab.endY - slab.startY;
-          context.fillRect(slab.startX, slab.startY, width, height);
-          context.strokeRect(slab.startX, slab.startY, width, height);
+        context.lineWidth = selectedEntityRef?.id === slab.id ? 3 : 2;
+        if (slab.shape === 'rect') {
+          context.fillRect(slab.x, slab.y, slab.width, slab.height);
+          context.strokeRect(slab.x, slab.y, slab.width, slab.height);
         } else if (Array.isArray(slab.points) && slab.points.length > 2) {
           context.beginPath();
           slab.points.forEach((point, index) => {
@@ -256,16 +445,22 @@ import Button from '../components/Button.astro';
 
       context.strokeStyle = '#000d10';
       context.lineWidth = 3;
-      freeDrawing.freeDrawing.beams.forEach((beam) => {
+      drawingState.entities.beams.forEach((beam) => {
+        context.lineWidth = selectedEntityRef?.id === beam.id ? 4 : 3;
         context.beginPath();
-        context.moveTo(beam.startX, beam.startY);
-        context.lineTo(beam.endX, beam.endY);
+        context.moveTo(beam.x1, beam.y1);
+        context.lineTo(beam.x2, beam.y2);
         context.stroke();
       });
 
       context.fillStyle = '#bc7155';
-      freeDrawing.freeDrawing.columns.forEach((column) => {
-        context.fillRect(column.startX, column.startY, column.widthPx, column.heightPx);
+      drawingState.entities.columns.forEach((column) => {
+        if (selectedEntityRef?.id === column.id) {
+          context.fillStyle = '#000d10';
+        } else {
+          context.fillStyle = '#bc7155';
+        }
+        context.fillRect(column.x, column.y, column.width, column.height);
       });
 
       if (activePolygon.length > 0) {
@@ -290,14 +485,69 @@ import Button from '../components/Button.astro';
         setEditorStatus('Para cerrar una losa poligonal se requieren al menos 3 puntos.', true);
         return;
       }
-      freeDrawing.freeDrawing.slabs.push({
-        type: 'polygon',
-        points: activePolygon.map((point) => ({ x: point.x, y: point.y }))
+      drawingState.entities.slabs.push({
+        id: nextId('slab'),
+        type: 'slab',
+        shape: 'polygon',
+        points: activePolygon.map((point) => ({ x: point.x, y: point.y })),
+        props: {
+          thicknessM: parseNumber('#prop-slab-thickness', 0.2, document)
+        }
       });
       activePolygon = [];
-      freeDrawing.createdAt = new Date().toISOString();
+      refreshDerivedDrawing();
       renderCanvas();
       setEditorStatus('Losa poligonal agregada al dibujo.');
+    };
+
+    const setActiveTool = (tool) => {
+      activeTool = tool;
+      if (tool !== 'slabPoly') activePolygon = [];
+      setEditorStatus(`Herramienta activa: ${tool}.`);
+      const entries = [
+        [toolSelectBtn, 'select'],
+        [toolColumnBtn, 'column'],
+        [toolBeamBtn, 'beam'],
+        [toolSlabRectBtn, 'slabRect'],
+        [toolSlabPolyBtn, 'slabPoly']
+      ];
+      entries.forEach(([element, toolName]) => {
+        if (!(element instanceof HTMLElement)) return;
+        const isActive = toolName === tool;
+        element.classList.toggle('bg-obsidian', isActive);
+        element.classList.toggle('text-canvas-white', isActive);
+      });
+      renderCanvas();
+    };
+
+    const deleteSelected = () => {
+      if (!selectedEntityRef) {
+        setEditorStatus('No hay elemento seleccionado para eliminar.', true);
+        return;
+      }
+      const key = `${selectedEntityRef.type}s`;
+      drawingState.entities[key] = drawingState.entities[key].filter((item) => item.id !== selectedEntityRef.id);
+      selectedEntityRef = null;
+      refreshDerivedDrawing();
+      updatePropertiesPanel();
+      renderCanvas();
+      setEditorStatus('Elemento eliminado.');
+    };
+
+    const applyPropertyInputsToSelection = () => {
+      const selected = getSelectedEntity();
+      if (!selected) return;
+      if (selected.type === 'column') {
+        selected.props.widthM = parseNumber('#prop-column-width', selected.props.widthM, document);
+        selected.props.depthM = parseNumber('#prop-column-depth', selected.props.depthM, document);
+      } else if (selected.type === 'beam') {
+        selected.props.widthM = parseNumber('#prop-beam-width', selected.props.widthM, document);
+        selected.props.depthM = parseNumber('#prop-beam-depth', selected.props.depthM, document);
+      } else if (selected.type === 'slab') {
+        selected.props.thicknessM = parseNumber('#prop-slab-thickness', selected.props.thicknessM, document);
+      }
+      refreshDerivedDrawing();
+      renderCanvas();
     };
 
     const buildFixedSimplifiedModel = () => {
@@ -372,9 +622,66 @@ import Button from '../components/Button.astro';
         .eq('id', activeProjectId)
         .maybeSingle();
 
-      if (projectData?.drawing_data?.freeDrawing) {
+      if (projectData?.drawing_data) {
         drawingData = projectData.drawing_data;
-        freeDrawing = drawingData;
+        const source = projectData.drawing_data;
+        const legacy = source.freeDrawing ?? { columns: [], beams: [], slabs: [] };
+        const entities = source.entities ?? {
+          columns: (legacy.columns ?? []).map((column) => ({
+            id: nextId('col'),
+            type: 'column',
+            x: column.startX ?? 0,
+            y: column.startY ?? 0,
+            width: column.widthPx ?? 20,
+            height: column.heightPx ?? 20,
+            props: {
+              widthM: column.widthM ?? 0.35,
+              depthM: column.depthM ?? 0.35
+            }
+          })),
+          beams: (legacy.beams ?? []).map((beam) => ({
+            id: nextId('beam'),
+            type: 'beam',
+            x1: beam.startX ?? 0,
+            y1: beam.startY ?? 0,
+            x2: beam.endX ?? 0,
+            y2: beam.endY ?? 0,
+            props: {
+              widthM: beam.widthM ?? 0.25,
+              depthM: beam.depthM ?? 0.5
+            }
+          })),
+          slabs: (legacy.slabs ?? []).map((slab) =>
+            slab.type === 'rect'
+              ? {
+                  id: nextId('slab'),
+                  type: 'slab',
+                  shape: 'rect',
+                  x: slab.startX ?? 0,
+                  y: slab.startY ?? 0,
+                  width: (slab.endX ?? 0) - (slab.startX ?? 0),
+                  height: (slab.endY ?? 0) - (slab.startY ?? 0),
+                  props: { thicknessM: slab.thicknessM ?? 0.2 }
+                }
+              : {
+                  id: nextId('slab'),
+                  type: 'slab',
+                  shape: 'polygon',
+                  points: slab.points ?? [],
+                  props: { thicknessM: slab.thicknessM ?? 0.2 }
+                }
+          )
+        };
+        drawingState = {
+          version: source.version ?? 3,
+          createdAt: source.createdAt ?? new Date().toISOString(),
+          grid: {
+            size: source.grid?.size ?? 20,
+            snapEnabled: source.grid?.snapEnabled ?? true
+          },
+          entities,
+          freeDrawing: legacy
+        };
       }
       if (projectData?.simplified_model) {
         simplifiedModel = projectData.simplified_model;
@@ -389,20 +696,42 @@ import Button from '../components/Button.astro';
       }
     }
 
+    if (gridSizeInput instanceof HTMLInputElement) gridSizeInput.value = String(drawingState.grid.size);
+    if (snapEnabledCheckbox instanceof HTMLInputElement) snapEnabledCheckbox.checked = drawingState.grid.snapEnabled;
+
     setStep(1);
+    setActiveTool('select');
+    updatePropertiesPanel();
     renderCanvas();
 
-    drawToolSelect?.addEventListener('change', (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLSelectElement)) return;
-      activeTool = /** @type {'column' | 'beam' | 'slabRect' | 'slabPoly'} */ (target.value);
-      if (activeTool !== 'slabPoly') activePolygon = [];
-      setEditorStatus(`Herramienta activa: ${target.options[target.selectedIndex]?.text ?? target.value}.`);
-      renderCanvas();
-    });
+    toolSelectBtn?.addEventListener('click', () => setActiveTool('select'));
+    toolColumnBtn?.addEventListener('click', () => setActiveTool('column'));
+    toolBeamBtn?.addEventListener('click', () => setActiveTool('beam'));
+    toolSlabRectBtn?.addEventListener('click', () => setActiveTool('slabRect'));
+    toolSlabPolyBtn?.addEventListener('click', () => setActiveTool('slabPoly'));
 
     canvas?.addEventListener('pointerdown', (event) => {
-      const point = getCanvasPoint(event);
+      const pointer = getCanvasPoint(event);
+      if (!pointer) return;
+      const point = snapPoint(pointer);
+      if (activeTool === 'select') {
+        selectedEntityRef = findEntityAtPoint(point);
+        updatePropertiesPanel();
+        if (selectedEntityRef) {
+          const selected = getSelectedEntity();
+          dragSelectionState = {
+            startPointer: point,
+            startEntity: selected ? structuredClone(selected) : null
+          };
+          setEditorStatus(`Seleccionado ${selectedEntityRef.type}. Arrastra para mover.`);
+        } else {
+          dragSelectionState = null;
+          setEditorStatus('Sin seleccion en ese punto.');
+        }
+        renderCanvas();
+        return;
+      }
+      dragSelectionState = null;
       if (!point) return;
       if (activeTool === 'slabPoly') {
         activePolygon.push(point);
@@ -414,44 +743,95 @@ import Button from '../components/Button.astro';
 
     canvas?.addEventListener('pointerup', (event) => {
       if (!dragStart) return;
-      const endPoint = getCanvasPoint(event);
-      if (!endPoint) return;
+      const endPointRaw = getCanvasPoint(event);
+      if (!endPointRaw) return;
+      const endPoint = snapPoint(endPointRaw);
 
-      const startX = Math.min(dragStart.x, endPoint.x);
-      const startY = Math.min(dragStart.y, endPoint.y);
-      const widthPx = Math.abs(endPoint.x - dragStart.x);
-      const heightPx = Math.abs(endPoint.y - dragStart.y);
+      if (activeTool === 'select' && selectedEntityRef && dragSelectionState?.startEntity) {
+        dragStart = null;
+        dragSelectionState = null;
+        return;
+      }
 
-      if (activeTool === 'column' && widthPx > 4 && heightPx > 4) {
-        const columnWidthM = parseNumber('#column-width', 0.35, document);
-        const columnDepthM = parseNumber('#column-depth', 0.35, document);
-        freeDrawing.freeDrawing.columns.push({
-          startX,
-          startY,
-          widthPx,
-          heightPx,
-          widthM: columnWidthM,
-          depthM: columnDepthM
+      const rect = normalizeRect(dragStart.x, dragStart.y, endPoint.x, endPoint.y);
+
+      if (activeTool === 'column' && rect.width > 4 && rect.height > 4) {
+        drawingState.entities.columns.push({
+          id: nextId('col'),
+          type: 'column',
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          props: {
+            widthM: parseNumber('#prop-column-width', 0.35, document),
+            depthM: parseNumber('#prop-column-depth', 0.35, document)
+          }
         });
       } else if (activeTool === 'beam') {
-        freeDrawing.freeDrawing.beams.push({
-          startX: dragStart.x,
-          startY: dragStart.y,
-          endX: endPoint.x,
-          endY: endPoint.y
+        drawingState.entities.beams.push({
+          id: nextId('beam'),
+          type: 'beam',
+          x1: dragStart.x,
+          y1: dragStart.y,
+          x2: endPoint.x,
+          y2: endPoint.y,
+          props: {
+            widthM: parseNumber('#prop-beam-width', 0.25, document),
+            depthM: parseNumber('#prop-beam-depth', 0.5, document)
+          }
         });
-      } else if (activeTool === 'slabRect' && widthPx > 8 && heightPx > 8) {
-        freeDrawing.freeDrawing.slabs.push({
-          type: 'rect',
-          startX,
-          startY,
-          endX: startX + widthPx,
-          endY: startY + heightPx
+      } else if (activeTool === 'slabRect' && rect.width > 8 && rect.height > 8) {
+        drawingState.entities.slabs.push({
+          id: nextId('slab'),
+          type: 'slab',
+          shape: 'rect',
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          props: {
+            thicknessM: parseNumber('#prop-slab-thickness', 0.2, document)
+          }
         });
       }
 
       dragStart = null;
-      freeDrawing.createdAt = new Date().toISOString();
+      dragSelectionState = null;
+      refreshDerivedDrawing();
+      renderCanvas();
+    });
+
+    canvas?.addEventListener('pointermove', (event) => {
+      if (activeTool !== 'select' || !selectedEntityRef || !dragSelectionState?.startEntity) return;
+      const currentRaw = getCanvasPoint(event);
+      if (!currentRaw) return;
+      const current = snapPoint(currentRaw);
+      const deltaX = current.x - dragSelectionState.startPointer.x;
+      const deltaY = current.y - dragSelectionState.startPointer.y;
+      const selected = getSelectedEntity();
+      if (!selected) return;
+
+      if (selected.type === 'column') {
+        selected.x = toFixedNumber(dragSelectionState.startEntity.x + deltaX);
+        selected.y = toFixedNumber(dragSelectionState.startEntity.y + deltaY);
+      } else if (selected.type === 'beam') {
+        selected.x1 = toFixedNumber(dragSelectionState.startEntity.x1 + deltaX);
+        selected.y1 = toFixedNumber(dragSelectionState.startEntity.y1 + deltaY);
+        selected.x2 = toFixedNumber(dragSelectionState.startEntity.x2 + deltaX);
+        selected.y2 = toFixedNumber(dragSelectionState.startEntity.y2 + deltaY);
+      } else if (selected.type === 'slab') {
+        if (selected.shape === 'rect') {
+          selected.x = toFixedNumber(dragSelectionState.startEntity.x + deltaX);
+          selected.y = toFixedNumber(dragSelectionState.startEntity.y + deltaY);
+        } else {
+          selected.points = dragSelectionState.startEntity.points.map((point) => ({
+            x: toFixedNumber(point.x + deltaX),
+            y: toFixedNumber(point.y + deltaY)
+          }));
+        }
+      }
+      refreshDerivedDrawing();
       renderCanvas();
     });
 
@@ -459,22 +839,54 @@ import Button from '../components/Button.astro';
       closeActivePolygon();
     });
 
+    deleteSelectedBtn?.addEventListener('click', () => {
+      deleteSelected();
+    });
+
     clearDrawingBtn?.addEventListener('click', () => {
-      freeDrawing = {
-        version: 1,
+      drawingState = {
+        version: 3,
         createdAt: new Date().toISOString(),
+        grid: drawingState.grid,
+        entities: { columns: [], beams: [], slabs: [] },
         freeDrawing: { columns: [], beams: [], slabs: [] }
       };
       activePolygon = [];
+      selectedEntityRef = null;
+      updatePropertiesPanel();
       renderCanvas();
       setEditorStatus('Dibujo libre limpiado.');
     });
 
+    snapEnabledCheckbox?.addEventListener('change', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      drawingState.grid.snapEnabled = target.checked;
+      renderCanvas();
+    });
+
+    gridSizeInput?.addEventListener('change', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      drawingState.grid.size = Math.max(8, Math.min(80, Number(target.value) || 20));
+      target.value = String(drawingState.grid.size);
+      renderCanvas();
+    });
+
+    [propColumnWidth, propColumnDepth, propBeamWidth, propBeamDepth, propSlabThickness].forEach((input) => {
+      input?.addEventListener('change', () => {
+        applyPropertyInputsToSelection();
+      });
+    });
+
     saveDrawingBtn?.addEventListener('click', async () => {
+      refreshDerivedDrawing();
       drawingData = {
-        version: 2,
+        version: 3,
         createdAt: new Date().toISOString(),
-        freeDrawing: freeDrawing.freeDrawing
+        grid: drawingState.grid,
+        entities: drawingState.entities,
+        freeDrawing: drawingState.freeDrawing
       };
       setEditorStatus('Guardando drawing_data...');
       const { error } = await persistProject({
@@ -485,7 +897,7 @@ import Button from '../components/Button.astro';
         setEditorStatus(`Error al guardar dibujo: ${error.message}`, true);
         return;
       }
-      setEditorStatus('Dibujo libre guardado correctamente.');
+      setEditorStatus('Dibujo 2D guardado correctamente.');
     });
 
     buildModelBtn?.addEventListener('click', async () => {
@@ -539,10 +951,13 @@ import Button from '../components/Button.astro';
 
     nextStepBtn?.addEventListener('click', async () => {
       if (currentStep === 1 && activeProjectId) {
+        refreshDerivedDrawing();
         drawingData = {
-          version: 2,
+          version: 3,
           createdAt: new Date().toISOString(),
-          freeDrawing: freeDrawing.freeDrawing
+          grid: drawingState.grid,
+          entities: drawingState.entities,
+          freeDrawing: drawingState.freeDrawing
         };
         await persistProject({ drawing_data: drawingData, status: 'drawn' });
       }
@@ -557,6 +972,17 @@ import Button from '../components/Button.astro';
       if (!supabase) return;
       await supabase.auth.signOut();
       window.location.href = '/login';
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        const target = event.target;
+        const isInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+        if (!isInput) {
+          event.preventDefault();
+          deleteSelected();
+        }
+      }
     });
   </script>
 </Layout>
