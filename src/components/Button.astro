@@ -9,25 +9,26 @@ const {
   href,
   type = 'button',
   variant = 'primary',
-  class: className = ''
+  class: className = '',
+  ...rest
 } = Astro.props;
 
 const variantClasses = {
-  primary: 'bg-[var(--color-desert-sienna)] text-[var(--color-canvas-white)] border border-transparent',
-  dark: 'bg-[var(--color-obsidian)] text-[var(--color-canvas-white)] border border-[var(--color-canvas-white)]',
-  ghost: 'bg-transparent text-[var(--color-obsidian)] border border-[var(--color-obsidian)]'
+  primary: 'btn-primary',
+  dark: 'btn-dark',
+  ghost: 'btn-ghost'
 };
 
 const baseClasses =
-  'inline-flex items-center justify-center rounded-[var(--radius-pill)] px-[22px] pt-[15px] pb-[16px] text-[17px] font-bold leading-none transition-colors duration-200';
+  'btn-base';
 ---
 {
   href ? (
-    <a href={href} class={`${baseClasses} ${variantClasses[variant]} ${className}`}>
+    <a href={href} class={`${baseClasses} ${variantClasses[variant]} ${className}`} {...rest}>
       <slot />
     </a>
   ) : (
-    <button type={type} class={`${baseClasses} ${variantClasses[variant]} ${className}`}>
+    <button type={type} class={`${baseClasses} ${variantClasses[variant]} ${className}`} {...rest}>
       <slot />
     </button>
   )
