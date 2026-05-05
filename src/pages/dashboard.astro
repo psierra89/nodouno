@@ -7,12 +7,39 @@ import Button from '../components/Button.astro';
     <section class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
       <div class="mb-31 flex flex-col items-center gap-16 text-center">
         <h1 class="text-heading leading-heading tracking-heading">Dashboard</h1>
-        <div class="flex flex-wrap justify-center gap-13">
-          <Button id="new-project-btn" variant="primary">Crear proyecto</Button>
-          <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
-        </div>
+        <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
       </div>
       <p id="session-label" class="mx-auto max-w-3xl text-center text-slate-mist">Comprobando sesion...</p>
+      <section class="mt-23 rounded-3xl border border-obsidian p-22">
+        <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Nuevo proyecto</h2>
+        <form id="new-project-form" class="mt-16 flex flex-col gap-13 md:flex-row md:items-end">
+          <label class="flex-1 text-left">
+            <span class="mb-11 block text-body-sm font-bold">Nombre del proyecto</span>
+            <input
+              id="project-name-input"
+              name="projectName"
+              type="text"
+              maxlength="80"
+              placeholder="Ej: Edificio oficinas norte"
+              class="w-full rounded-full border border-obsidian bg-canvas-white px-22 pt-15 pb-16 text-body-sm text-obsidian outline-none focus:border-desert-sienna"
+              required
+            />
+          </label>
+          <div class="flex gap-11">
+            <Button id="create-project-btn" type="submit" variant="primary">Crear</Button>
+            <button
+              id="reset-project-form-btn"
+              type="button"
+              class="inline-flex items-center justify-center rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-obsidian transition-colors hover:bg-obsidian hover:text-canvas-white"
+            >
+              Limpiar
+            </button>
+          </div>
+        </form>
+        <p id="project-form-status" class="mt-11 text-slate-mist" role="status" aria-live="polite">
+          Completa el nombre para crear un proyecto nuevo.
+        </p>
+      </section>
       <section class="mt-38 text-center">
         <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Tus proyectos</h2>
         <div id="projects-list" class="mt-22 grid gap-13">
@@ -25,7 +52,10 @@ import Button from '../components/Button.astro';
     import { supabase } from '../lib/supabase';
     const sessionLabel = document.querySelector('#session-label');
     const logoutBtn = document.querySelector('#logout-btn');
-    const newProjectBtn = document.querySelector('#new-project-btn');
+    const newProjectForm = document.querySelector('#new-project-form');
+    const projectNameInput = document.querySelector('#project-name-input');
+    const resetProjectFormBtn = document.querySelector('#reset-project-form-btn');
+    const projectFormStatus = document.querySelector('#project-form-status');
     const projectsList = document.querySelector('#projects-list');
     let currentSession = null;
 
@@ -41,6 +71,13 @@ import Button from '../components/Button.astro';
       localStorage.setItem('active-project-id', project.id);
       localStorage.setItem('active-project-name', project.name || 'Proyecto sin titulo');
       localStorage.setItem('active-project-status', project.status || 'draft');
+    };
+
+    const setFormStatus = (message, isError = false) => {
+      if (!projectFormStatus) return;
+      projectFormStatus.textContent = message;
+      projectFormStatus.classList.toggle('text-desert-sienna', isError);
+      projectFormStatus.classList.toggle('text-slate-mist', !isError);
     };
 
     const renderProjects = (projects) => {
@@ -100,21 +137,40 @@ import Button from '../components/Button.astro';
       }
     }
 
-    newProjectBtn?.addEventListener('click', async () => {
+    resetProjectFormBtn?.addEventListener('click', () => {
+      if (!(projectNameInput instanceof HTMLInputElement)) return;
+      projectNameInput.value = '';
+      setFormStatus('Completa el nombre para crear un proyecto nuevo.');
+      projectNameInput.focus();
+    });
+
+    newProjectForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
       if (!supabase || !currentSession) return;
-      const name = window.prompt('Nombre del proyecto');
-      if (!name || !name.trim()) return;
+      if (!(projectNameInput instanceof HTMLInputElement)) return;
+
+      const name = projectNameInput.value.trim();
+      if (!name) {
+        setFormStatus('Ingresa un nombre valido para continuar.', true);
+        projectNameInput.focus();
+        return;
+      }
+
+      setFormStatus('Creando proyecto...');
 
       const { error } = await supabase.from('projects').insert({
-        name: name.trim(),
+        name,
         status: 'draft',
         user_id: currentSession.user.id
       });
 
       if (error) {
-        window.alert(`No se pudo crear el proyecto: ${error.message}`);
+        setFormStatus(`No se pudo crear el proyecto: ${error.message}`, true);
         return;
       }
+
+      projectNameInput.value = '';
+      setFormStatus('Proyecto creado correctamente.');
       await loadProjects();
     });
 
@@ -132,7 +188,7 @@ import Button from '../components/Button.astro';
           .maybeSingle();
 
         if (error || !data) {
-          window.alert('No se pudo abrir el proyecto.');
+          setFormStatus('No se pudo abrir el proyecto seleccionado.', true);
           return;
         }
 
@@ -142,13 +198,12 @@ import Button from '../components/Button.astro';
 
       const deleteId = target.dataset.deleteId;
       if (deleteId) {
-        const confirmed = window.confirm('Se eliminara el proyecto. Deseas continuar?');
-        if (!confirmed) return;
         const { error } = await supabase.from('projects').delete().eq('id', deleteId);
         if (error) {
-          window.alert(`No se pudo eliminar: ${error.message}`);
+          setFormStatus(`No se pudo eliminar: ${error.message}`, true);
           return;
         }
+        setFormStatus('Proyecto eliminado.');
         await loadProjects();
       }
     });
