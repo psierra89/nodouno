@@ -7,6 +7,9 @@
   --color-canvas-white: #ffffff;
   --color-slate-mist: #8e8e95;
   --color-desert-sienna: #bc7155;
+  --spacing-22: 22px;
+  --spacing-23: 23px;
+  --spacing-68: 68px;
   --radius-card: 45px;
   --radius-pill: 1000px;
 }
@@ -16,9 +19,61 @@ body {
   color: var(--color-obsidian);
   font-family: 'HelveticaNowDisplay', ui-sans-serif, system-ui, sans-serif;
   font-size: 17px;
+  line-height: 1.61;
+  margin: 0;
 }
 
 h1, h2, h3 {
   font-weight: 700;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+.section-gap {
+  margin-top: var(--spacing-68);
+}
+
+.hero-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-panel::after {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  right: -100px;
+  top: -110px;
+}
+
+.marquee {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.marquee span {
+  display: inline-block;
+  min-width: 100%;
+  padding-left: 100%;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--color-obsidian);
+  letter-spacing: 0.04em;
+  animation: marquee 26s linear infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }

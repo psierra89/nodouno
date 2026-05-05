@@ -1,13 +1,34 @@
 ---
 interface Props {
+  href?: string;
   type?: 'button' | 'submit' | 'reset';
+  variant?: 'primary' | 'dark' | 'ghost';
   class?: string;
 }
-const { type = 'button', class: className } = Astro.props;
+const {
+  href,
+  type = 'button',
+  variant = 'primary',
+  class: className = ''
+} = Astro.props;
+
+const variantClasses = {
+  primary: 'bg-[var(--color-desert-sienna)] text-[var(--color-canvas-white)] border border-transparent',
+  dark: 'bg-[var(--color-obsidian)] text-[var(--color-canvas-white)] border border-[var(--color-canvas-white)]',
+  ghost: 'bg-transparent text-[var(--color-obsidian)] border border-[var(--color-obsidian)]'
+};
+
+const baseClasses =
+  'inline-flex items-center justify-center rounded-[var(--radius-pill)] px-[22px] pt-[15px] pb-[16px] text-[17px] font-bold leading-none transition-colors duration-200';
 ---
-<button
-  type={type}
-  class={`bg-[var(--color-desert-sienna)] text-white px-6 py-3 rounded-[var(--radius-pill)] shadow-none ${className}`}
->
-  <slot />
-</button>
+{
+  href ? (
+    <a href={href} class={`${baseClasses} ${variantClasses[variant]} ${className}`}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class={`${baseClasses} ${variantClasses[variant]} ${className}`}>
+      <slot />
+    </button>
+  )
+}
