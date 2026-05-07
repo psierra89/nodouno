@@ -3,7 +3,11 @@ import { z } from 'zod';
 const schema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-  PORT: z.coerce.number().default(4000),
+  /**
+   * Azure Windows App Service + iisnode puede inyectar `PORT` como named pipe.
+   * Debe aceptarse como string además de puertos numéricos.
+   */
+  PORT: z.string().default('4000'),
   HOST: z.string().default('0.0.0.0'),
   CORS_ORIGIN: z.string().optional()
 });

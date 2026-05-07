@@ -29,7 +29,11 @@ async function main() {
 
   server.get('/healthz', async () => ({ ok: true }));
 
-  const address = await server.listen({ port: env.PORT, host: env.HOST });
+  const portValue = env.PORT.trim();
+  const isNumericPort = /^\d+$/.test(portValue);
+  const address = isNumericPort
+    ? await server.listen({ port: Number(portValue), host: env.HOST })
+    : await server.listen({ path: portValue });
   server.log.info(`API nodouno en ${address}`);
 }
 
