@@ -1,4 +1,0 @@
-
-> @nodouno/api@0.0.1 build D:\GitHub\nodouno\apps\api
-> tsc -p tsconfig.build.json
-
