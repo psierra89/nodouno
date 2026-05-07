@@ -147,6 +147,9 @@ import Button from '../components/Button.astro';
       });
     };
 
+    const apiUrl = getPublicApiUrl();
+    const preferApi = Boolean(apiUrl);
+
     const trpc = () =>
       createTrpcClient(async () => {
         if (!supabase) return null;
@@ -157,14 +160,19 @@ import Button from '../components/Button.astro';
     const loadProjects = async () => {
       if (!supabase || !projectsList) return;
       const client = trpc();
-      if (getPublicApiUrl() && client) {
+      if (preferApi) {
+        if (!client) {
+          setProjectsMessage('API configurada pero cliente no inicializado.');
+          return;
+        }
         try {
           const projects = await client.projects.list.query();
           lastProjects = projects;
           renderProjects(lastProjects);
           return;
         } catch (e) {
-          console.warn('tRPC list no disponible, fallback Supabase', e);
+          setProjectsMessage(`Error API: ${(e as Error).message ?? e}`);
+          return;
         }
       }
       const { data: projects, error } = await supabase
@@ -227,7 +235,11 @@ import Button from '../components/Button.astro';
       });
 
       const client = trpc();
-      if (getPublicApiUrl() && client) {
+      if (preferApi) {
+        if (!client) {
+          setFormStatus('API configurada pero cliente no inicializado.', true);
+          return;
+        }
         try {
           await client.projects.create.mutate({ name, specs: requestedSpecs });
         } catch (e) {
@@ -279,15 +291,30 @@ import Button from '../components/Button.astro';
 
       const openId = target.dataset.openId;
       if (openId) {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('id, name, status')
-          .eq('id', openId)
-          .maybeSingle();
-
-        if (error || !data) {
-          setFormStatus('No se pudo abrir el proyecto seleccionado.', true);
-          return;
+        let data: { id: string; name?: string; status?: string } | null = null;
+        if (preferApi) {
+          const client = trpc();
+          if (!client) {
+            setFormStatus('API configurada pero cliente no inicializado.', true);
+            return;
+          }
+          try {
+            data = await client.projects.get.query({ id: openId });
+          } catch (e) {
+            setFormStatus(`No se pudo abrir el proyecto (API): ${(e as Error).message ?? e}`, true);
+            return;
+          }
+        } else {
+          const result = await supabase
+            .from('projects')
+            .select('id, name, status')
+            .eq('id', openId)
+            .maybeSingle();
+          if (result.error || !result.data) {
+            setFormStatus('No se pudo abrir el proyecto seleccionado.', true);
+            return;
+          }
+          data = result.data;
         }
 
         storeActiveProject(data);
@@ -312,7 +339,11 @@ import Button from '../components/Button.astro';
       const confirmDeleteId = target.dataset.confirmDelete;
       if (confirmDeleteId) {
         const client = trpc();
-        if (getPublicApiUrl() && client) {
+        if (preferApi) {
+          if (!client) {
+            setFormStatus('API configurada pero cliente no inicializado.', true);
+            return;
+          }
           try {
             await client.projects.delete.mutate({ id: confirmDeleteId });
           } catch (e) {
