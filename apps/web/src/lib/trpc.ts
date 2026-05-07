@@ -5,7 +5,8 @@ import type { AppRouter } from '@nodouno/api/router';
 /** URL base de `@nodouno/api` (ej. http://localhost:4000). Sin trailing slash. */
 export function getPublicApiUrl(): string | undefined {
   const raw = import.meta.env.PUBLIC_API_URL as string | undefined;
-  return raw?.replace(/\/$/, '') || undefined;
+  const normalized = raw?.trim().replace(/\/$/, '');
+  return normalized || undefined;
 }
 
 export function createTrpcClient(getAccessToken: () => Promise<string | null>) {

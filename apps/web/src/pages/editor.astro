@@ -377,6 +377,15 @@ import Button from '../components/Button.astro';
     let lastResults: Record<string, unknown> | null = null;
     let viewer3d: ReturnType<typeof createSimplifiedModelViewer> | null = null;
     let projectSpecs = DEFAULT_PROJECT_SPECS;
+    const apiUrl = getPublicApiUrl();
+    const preferApi = Boolean(apiUrl);
+
+    const getTrpcClient = () =>
+      createTrpcClient(async () => {
+        if (!supabase) return null;
+        const { data } = await supabase.auth.getSession();
+        return data.session?.access_token ?? null;
+      });
 
     const setEditorStatus = (message: string, isError = false) => {
       if (!editorStatus) return;
@@ -420,7 +429,18 @@ import Button from '../components/Button.astro';
     });
 
     const persistProject = async (values: Record<string, unknown>) => {
-      if (!supabase || !activeProjectId) return { error: new Error('Proyecto no seleccionado.') };
+      if (!activeProjectId) return { error: new Error('Proyecto no seleccionado.') };
+      if (preferApi) {
+        const client = getTrpcClient();
+        if (!client) return { error: new Error('API configurada pero cliente no inicializado.') };
+        try {
+          await client.projects.update.mutate({ id: activeProjectId, patch: values });
+          return { error: null };
+        } catch (error) {
+          return { error: error as Error };
+        }
+      }
+      if (!supabase) return { error: new Error('Cliente Supabase no inicializado.') };
       return supabase.from('projects').update(values).eq('id', activeProjectId);
     };
 
@@ -627,12 +647,37 @@ import Button from '../components/Button.astro';
     }
 
     let initialDrawing: DrawingState | null = null;
-    if (activeProjectId && supabase) {
-      const { data: projectData } = await supabase
-        .from('projects')
-        .select('name, specs, drawing_data, simplified_model, calculations, dimensioning')
-        .eq('id', activeProjectId)
-        .maybeSingle();
+    if (activeProjectId) {
+      let projectData:
+        | {
+            name?: string | null;
+            specs?: unknown;
+            drawing_data?: unknown;
+            simplified_model?: unknown;
+            calculations?: unknown;
+            dimensioning?: unknown;
+          }
+        | null
+        | undefined;
+      if (preferApi) {
+        const client = getTrpcClient();
+        if (!client) {
+          setEditorStatus('API configurada pero cliente no inicializado.', true);
+        } else {
+          try {
+            projectData = await client.projects.get.query({ id: activeProjectId });
+          } catch (error) {
+            setEditorStatus(`No se pudo cargar el proyecto (API): ${(error as Error).message ?? error}`, true);
+          }
+        }
+      } else if (supabase) {
+        const { data } = await supabase
+          .from('projects')
+          .select('name, specs, drawing_data, simplified_model, calculations, dimensioning')
+          .eq('id', activeProjectId)
+          .maybeSingle();
+        projectData = data;
+      }
 
       projectSpecs = normalizeProjectSpecs(projectData?.specs);
       syncSpecsControls();
@@ -886,13 +931,6 @@ import Button from '../components/Button.astro';
       }
     });
 
-    const trpc = () =>
-      createTrpcClient(async () => {
-        if (!supabase) return null;
-        const { data } = await supabase.auth.getSession();
-        return data.session?.access_token ?? null;
-      });
-
     exportJsonBtn?.addEventListener('click', async () => {
       const snapshot = {
         exportedAt: new Date().toISOString(),
@@ -902,8 +940,12 @@ import Button from '../components/Button.astro';
         calculations: lastResults?.calculations ?? null,
         dimensioning: lastResults?.dimensioning ?? null
       };
-      const client = trpc();
-      if (getPublicApiUrl() && client && activeProjectId) {
+      const client = getTrpcClient();
+      if (preferApi) {
+        if (!client || !activeProjectId) {
+          setEditorStatus('API configurada pero no se pudo exportar en servidor.', true);
+          return;
+        }
         try {
           const server = await client.exports.requestJson.mutate({
             projectId: activeProjectId as string
@@ -911,8 +953,12 @@ import Button from '../components/Button.astro';
           downloadJsonBlob(`nodouno-export-${activeProjectId}.json`, server.snapshot);
           setEditorStatus('Snapshot JSON generado (servidor).');
           return;
-        } catch {
-          /* fallback cliente */
+        } catch (error) {
+          setEditorStatus(
+            `No se pudo exportar desde API: ${(error as Error).message ?? error}.`,
+            true
+          );
+          return;
         }
       }
       downloadJsonBlob(`nodouno-export-${activeProjectId ?? 'local'}.json`, snapshot);
