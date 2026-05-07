@@ -1,36 +1,38 @@
-# 📋 Plan de Proyecto: Nodouno (MVP Simplificado)
+# Plan de Proyecto Nodouno (MVP) - Estado Actual
 
-Este plan de desarrollo estructura el trabajo para el MVP basándose en los agentes y responsabilidades definidas.
+Este documento refleja el estado real del trabajo al cierre de la iteracion actual y marca los pendientes inmediatos.
 
-## 1. 🏗️ Frontend & UI (Responsabilidad: AstroAgent)
-*   **Inicialización:** Crear el proyecto base con Astro y configurar Tailwind CSS v4.
-*   **Sistema de Diseño (Lujo Monocromático):**
-    *   Configurar tokens estrictos de Tailwind: `--color-obsidian`, `--color-canvas-white`, `--color-slate-mist`, y `--color-desert-sienna` (único CTA).
-    *   Implementar restricciones visuales: 0 sombras, 0 gradientes, tipografía masiva (`HelveticaNowDisplay`) con tracking negativo para títulos.
-    *   Establecer bordes extremos: `45px` para tarjetas/paneles y `1000px` (píldora) para botones/inputs.
-*   **Gestión de Estado:** Integrar Nano Stores para manejar el estado global de la aplicación (pasos actuales del usuario, datos en memoria del proyecto).
-*   **Autenticación y Rutas:** Configurar Supabase SSR en Astro para proteger las rutas privadas (`/dashboard`, `/editor`).
+## Fase 1 - Base de producto y flujo protegido
 
-## 2. 🗄️ Base de Datos (Responsabilidad: DBAgent)
-*   **Esquema Supabase (PostgreSQL):**
-    *   Crear tabla `profiles` vinculada mediante triggers/hooks a `auth.users`.
-    *   Crear tabla `projects` con claves primarias y foráneas utilizando UUIDs.
-*   **Estructura Híbrida (JSONB):** Configurar las columnas de iteración rápida para el modelo simplificado: `drawing_data`, `simplified_model`, `calculations`, y `dimensioning`.
-*   **Estados del Proyecto:** Crear el ENUM `status` ('draft', 'drawn', 'calculated', 'dimensioned').
-*   **Seguridad:** Implementar obligatoriamente políticas RLS (Row Level Security) para garantizar que los usuarios (`user_id = auth.uid()`) solo tengan acceso de lectura y escritura a sus propios proyectos.
+- [x] Proyecto Astro + Tailwind operativo.
+- [x] Sistema visual base monocromatico aplicado (tokens, radios, tipografia y botones).
+- [x] Login y rutas protegidas para `/dashboard` y `/editor` con Supabase.
+- [x] Dashboard con creacion de proyecto inline (sin `prompt`/`alert` para el nombre), carga/listado y apertura de proyecto.
+- [x] Mejorar UX de eliminacion de proyecto (confirmacion inline no destructiva).
 
-## 3. 🧠 Motor de Cálculo / Backend (Responsabilidad: BackendAgent)
-*   **Núcleo Matemático (Node/TS):** Desarrollar funciones puras que modelen la estructura simplificada (1 Losa, 4 Vigas, 4 Columnas) de hormigón armado.
-*   **Procesamiento de Cargas (CIRSOC 101/201):**
-    *   Calcular Carga Muerta (D) y Sobrecarga (L).
-    *   Calcular Carga Última ($q_u = 1.2D + 1.6L$) y distribuir cargas por áreas tributarias hacia vigas y columnas.
-*   **Cálculo de Solicitaciones:** Determinar Momento ($M_u$) en losas/vigas, Corte ($V_u$) en vigas y Esfuerzo Axial ($P_u$) en columnas. Agregar comentarios TODO para momentos en columnas post-MVP.
-*   **Dimensionamiento (CIRSOC 201):**
-    *   Calcular cuantías de acero ($\rho$), verificaciones dúctiles, y separación de estribos por corte.
-    *   Dimensionar columnas con cuantía geométrica permitida.
-*   **Salida (Output):** Estructurar el retorno como un objeto JSON inmutable conteniendo la geometría final, el despiece de la armadura (longitudinal y transversal) y el cómputo métrico ($m^3$ de hormigón y $kg$ de acero).
+## Fase 2 - Editor 2D + modelo + calculo
 
-## 4. 📐 Visualización 3D (Responsabilidad: ThreeJSAgent)
-*   **Componentes 3D:** Desarrollar scripts de Three.js para renderizar la estructura espacial generada y el despiece de armaduras.
-*   **Integración Frontend:** Aislar y montar el código de Three.js en componentes UI dentro de Astro usando directivas de hidratación (`client:load`).
-*   **Optimización de Memoria:** Implementar funciones de limpieza (`dispose`) para liberar geometrías y materiales del GPU al desmontar el componente.
+- [x] Editor 2D MVP con parametros y boceto sobre canvas.
+- [x] Guardado de `drawing_data` en `projects`.
+- [x] Generacion y guardado de `simplified_model`.
+- [x] Integracion con motor de calculo existente (`loads`, `demands`, `design`).
+- [x] Persistencia de `calculations` y `dimensioning` en `projects`.
+- [x] Recuperacion en editor del ultimo `drawing_data`/`simplified_model`/resultados cuando existen.
+- [x] Edicion geometrica libre tipo CAD basico (canvas infinito, pan/zoom anclado, snap a 0.1 m + endpoints/midpoints, undo/redo, multi-seleccion). Ver `editor2d.md`.
+- [x] `drawing_data` en metros (v4) con migracion tolerante de versiones <= 3.
+- [x] TODO: pasar a estado `dimensioned` cuando se cierre el pipeline completo de armado final.
+
+## Fase 3 - Visualizacion 3D MVP
+
+- [x] Integracion base de Three.js en la UI del editor.
+- [x] Render MVP de losa, vigas y columnas desde `simplified_model`.
+- [x] Limpieza de recursos al desmontar (`dispose` de geometria/material y `renderer.dispose`).
+- [x] TODO: controles de camara (orbita/zoom) y etiquetas de elementos.
+- [ ] TODO: mostrar armaduras/dimensionado detallado en 3D (post-MVP).
+
+## Fase 4 - Calidad y cierre de iteracion
+
+- [x] `npm run build` y `npm run test` verdes tras rediseno del editor (19/19 tests, build OK).
+- [x] Migracion tolerante de `drawing_data` legacy en lectura + `freeDrawing` legacy en escritura.
+- [ ] Revisar riesgos de datos legacy en `projects` (modelos previos sin campos nuevos).
+- [ ] Definir el siguiente corte: mejoras UX editor + salida de armado mas rica.

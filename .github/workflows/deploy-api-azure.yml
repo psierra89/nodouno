@@ -1,0 +1,79 @@
+name: Deploy API to Azure Web App
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'apps/api/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/deploy-api-azure.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @nodouno/api build
+
+      - name: Bundle API for Azure Windows (iisnode)
+        run: |
+          pnpm exec esbuild apps/api/src/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=.azure-deploy/iis/server.js
+          cat > .azure-deploy/iis/web.config <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="iisnode" path="server.js" verb="*" modules="iisnode" />
+              </handlers>
+              <rewrite>
+                <rules>
+                  <rule name="DynamicContent">
+                    <match url=".*" />
+                    <action type="Rewrite" url="server.js" />
+                  </rule>
+                </rules>
+              </rewrite>
+              <iisnode watchedFiles="web.config;*.js" />
+            </system.webServer>
+          </configuration>
+          EOF
+          cat > .azure-deploy/iis/package.json <<'EOF'
+          {
+            "name": "nodouno-api-runtime",
+            "private": true,
+            "version": "1.0.0",
+            "main": "server.js",
+            "engines": { "node": ">=22" }
+          }
+          EOF
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: nodouno-api-psierra89
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_NODOUNO_API }}
+          package: .azure-deploy/iis

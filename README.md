@@ -1,43 +1,81 @@
-# Astro Starter Kit: Minimal
+# Nodouno
 
-```sh
-npm create astro@latest -- --template minimal
+Nodouno es una plataforma para modelado 2D estructural, generación de modelo simplificado, cálculo y dimensionamiento, con frontend web y backend tipado.
+
+Arquitectura actual (monorepo):
+- `apps/web`: frontend Astro + Tailwind.
+- `apps/api`: backend Fastify + tRPC.
+- `packages/calc`: motor de cálculo estructural.
+- `packages/editor2d`: editor CAD 2D.
+- `packages/shared`: tipos/schemas compartidos.
+- `packages/db`: esquema Drizzle para Postgres/Supabase.
+
+## Requisitos
+
+- Node.js >= 22
+- pnpm >= 9
+
+## Instalación
+
+```bash
+pnpm install
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Ejecutar en local
 
-## 🚀 Project Structure
+### Frontend
+```bash
+pnpm --filter @nodouno/web dev
+```
+URL: `http://localhost:4321`
 
-Inside of your Astro project, you'll see the following folders and files:
+### Backend API
+Configurar antes:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- opcional `CORS_ORIGIN`, `PORT`, `HOST`
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+pnpm --filter @nodouno/api dev
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+### Conectar frontend -> backend
+En `apps/web` configurar:
+- `PUBLIC_API_URL=http://localhost:4000`
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+Si `PUBLIC_API_URL` no existe, el frontend usa fallback parcial a Supabase cliente.
 
-Any static assets, like images, can be placed in the `public/` directory.
+## Scripts útiles (raíz)
 
-## 🧞 Commands
+| Comando | Qué hace |
+|---|---|
+| `pnpm test` | Ejecuta tests de `packages/*` (Vitest) |
+| `pnpm lint` | Ejecuta ESLint |
+| `pnpm build` | Build de `@nodouno/web` y `@nodouno/api` con Turbo |
 
-All commands are run from the root of the project, from a terminal:
+## Deploy actual
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+### Frontend
+- Vercel
+- URL productiva: `https://nodouno.vercel.app`
+- Variable obligatoria en Vercel: `PUBLIC_API_URL`
 
-## 👀 Want to learn more?
+### API
+- Azure App Service (F1) en `swedencentral`
+- App: `nodouno-api-psierra89`
+- Healthcheck:
+  - `https://nodouno-api-psierra89.azurewebsites.net/healthz`
+  - `https://nodouno-api-psierra89.azurewebsites.net/trpc/health`
+- CI/CD: `.github/workflows/deploy-api-azure.yml` (deploy en push a `develop`)
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## Variables de entorno
+
+Ver `.env.example` en la raíz.
+
+## Documentación
+
+- Arquitectura: `documentation_files/architecture.md`
+- Base de datos: `documentation_files/database.md`
+- Cálculo: `documentation_files/backend-calculo.md`
+- Agentes/playbooks: `documentation_files/agents.md`
+- Migraciones SQL: `supabase/migrations/`

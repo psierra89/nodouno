@@ -1,0 +1,35 @@
+---
+interface Props {
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  variant?: 'primary' | 'dark' | 'ghost';
+  class?: string;
+}
+const {
+  href,
+  type = 'button',
+  variant = 'primary',
+  class: className = '',
+  ...rest
+} = Astro.props;
+
+const variantClasses = {
+  primary: 'bg-desert-sienna text-canvas-white border border-desert-sienna hover:opacity-90',
+  dark: 'bg-obsidian text-canvas-white border border-obsidian hover:opacity-90',
+  ghost: 'bg-transparent text-obsidian border border-obsidian hover:bg-obsidian hover:text-canvas-white'
+};
+
+const baseClasses =
+  'inline-flex items-center justify-center rounded-full px-22 pt-15 pb-16 text-body-sm leading-none font-bold no-underline transition-opacity disabled:cursor-not-allowed disabled:opacity-45';
+---
+{
+  href ? (
+    <a href={href} class={`${baseClasses} ${variantClasses[variant]} ${className}`} {...rest}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class={`${baseClasses} ${variantClasses[variant]} ${className}`} {...rest}>
+      <slot />
+    </button>
+  )
+}

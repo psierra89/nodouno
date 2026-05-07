@@ -26,3 +26,48 @@ Este proyecto utiliza una arquitectura basada en agentes especializados. Antes d
 - **Reglas:**
   - **CRÍTICO:** Lee siempre `backend-calculo.md` para respetar la normativa argentina.
   - Crear funciones puras en Node/TS que retornen JSON estructurados.
+
+## 🚀 Playbook de Deploy (evitar bloqueos)
+
+Esta sección resume problemas reales que ya ocurrieron y la forma correcta de evitarlos.
+
+### 1) Railway Free
+- Puede bloquear deploys por franja horaria o límite de recursos (`Free plan resource provision limit exceeded`).
+- Si se usa Railway, validar primero:
+  - cuota disponible,
+  - región permitida,
+  - que el servicio esté vinculado al repo correcto.
+- Si hay fricción repetida, priorizar Azure for Students (ver punto 2).
+
+### 2) Azure App Service (Students / Free)
+- La suscripción puede aplicar políticas de regiones. No asumir `westeurope`; probar región permitida.
+- Región validada en este proyecto: `swedencentral`.
+- Web app activa: `nodouno-api-psierra89`.
+- **Importante:** App Service Windows puede comportarse como IIS estático si no se empaqueta correctamente la app Node.
+
+### 3) Backend en Azure: formato de despliegue estable
+- Para este repo, el despliegue estable es:
+  - bundle de `apps/api/src/server.ts` con `esbuild` a `server.js`,
+  - `web.config` con `iisnode` + rewrite a `server.js`,
+  - zip de artefacto mínimo para deploy.
+- El workflow de referencia es `.github/workflows/deploy-api-azure.yml`.
+
+### 4) Variables obligatorias (API)
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CORS_ORIGIN` (ej: `https://nodouno.vercel.app`)
+- `HOST` (si aplica)
+- No persistir secretos en repo ni en chats. Si se expone una key, rotarla.
+
+### 5) Vercel (frontend) y acoplamiento con API
+- El frontend requiere `PUBLIC_API_URL` para usar backend dedicado.
+- Si falta, cae en fallback a cliente Supabase (comportamiento parcial).
+- Tras cambiar env vars en Vercel: redeploy inmediato.
+
+### 6) Verificación mínima post-deploy
+- API:
+  - `GET /healthz` -> 200 y `{"ok":true}`
+  - `GET /trpc/health` -> 200
+- Frontend:
+  - abrir `/login`, `/dashboard`, `/editor`
+  - revisar red/console por CORS o 401/500.

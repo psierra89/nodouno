@@ -12,7 +12,8 @@ Para evitar migraciones constantes en el MVP, las etapas del proyecto se guardan
 - `simplified_model` (JSONB): El modelo de 4 columnas, 4 vigas y 1 losa generado.
 - `calculations` (JSONB): Cargas y solicitaciones.
 - `dimensioning` (JSONB): Armaduras y cantidades según CIRSOC 201.
-- `status` (ENUM): 'draft', 'drawn', 'calculated', 'dimensioned'.
+- `specs` (JSONB): Especificaciones generales del proyecto (reglamento/materiales).
+- `status` (ENUM o TEXT según migración): `draft`, `drawn`, `loaded` (modelo simplificado listo), `calculated` (cargas/solicitaciones), `dimensioned` (armado/dimensionamiento). El literal legacy `loads_defined` se normaliza a `loaded` en la app (`packages/shared`).
 
 ## 3. Seguridad Obligatoria
 - **UUID:** Usar UUIDs para todas las PK y FK.
