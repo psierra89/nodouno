@@ -1,0 +1,932 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Button from '../components/Button.astro';
+---
+<Layout>
+  <main class="min-h-screen bg-canvas-white text-obsidian">
+    <header class="flex flex-wrap items-center justify-between gap-16 border-b border-obsidian px-22 py-16">
+      <div class="flex flex-col">
+        <span class="text-body-sm font-bold uppercase tracking-[0.2em] text-slate-mist">Nodouno · Editor 2D</span>
+        <span id="active-project-label" class="text-subheading leading-subheading tracking-subheading">Sin proyecto activo</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-11">
+        <span id="session-label" class="hidden text-slate-mist md:inline">Comprobando sesion...</span>
+        <Button id="go-dashboard-btn" variant="ghost" href="/dashboard">Dashboard</Button>
+        <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
+      </div>
+    </header>
+
+    <nav class="flex flex-wrap items-center justify-between gap-11 border-b border-obsidian/20 bg-canvas-white px-22 py-13">
+      <div class="flex flex-wrap gap-11" role="tablist" aria-label="Fases del proyecto">
+        <button
+          type="button"
+          data-step-pill="1"
+          class="cad-step-pill rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm font-bold"
+        >
+          1 · Dibujo 2D
+        </button>
+        <button
+          type="button"
+          data-step-pill="2"
+          class="cad-step-pill rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm font-bold"
+        >
+          2 · Cargas
+        </button>
+        <button
+          type="button"
+          data-step-pill="3"
+          class="cad-step-pill rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm font-bold"
+        >
+          3 · Calculo
+        </button>
+      </div>
+      <div class="flex gap-11">
+        <Button id="prev-step-btn" variant="ghost">Anterior</Button>
+        <Button id="next-step-btn" variant="dark">Siguiente</Button>
+      </div>
+    </nav>
+
+    <section class="flex flex-wrap items-end justify-between gap-16 border-b border-obsidian/20 bg-canvas-white px-22 py-16">
+      <div class="flex flex-col gap-8">
+        <span class="text-body-sm font-bold uppercase tracking-[0.2em] text-slate-mist">Especificaciones</span>
+        <p class="max-w-[72ch] text-slate-mist">
+          Reglamento fijo por ahora: CIRSOC 201. Acero fijo: ADN420. Hormigon seleccionable.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-end gap-11">
+        <label class="flex flex-col gap-8">
+          <span class="text-body-sm font-bold">Reglamento</span>
+          <select id="spec-regulation" class="cad-input min-w-[180px]">
+            <option value="CIRSOC_201">CIRSOC 201</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-8">
+          <span class="text-body-sm font-bold">Acero</span>
+          <select id="spec-steel" class="cad-input min-w-[140px]">
+            <option value="ADN_420">ADN420</option>
+          </select>
+        </label>
+        <label class="flex flex-col gap-8">
+          <span class="text-body-sm font-bold">Hormigon</span>
+          <select id="spec-concrete" class="cad-input min-w-[120px]">
+            <option value="H25">H25</option>
+            <option value="H30">H30</option>
+            <option value="H35">H35</option>
+          </select>
+        </label>
+        <p id="specs-status" class="min-w-[220px] text-right text-body-sm text-slate-mist" role="status" aria-live="polite">
+          Cargando...
+        </p>
+      </div>
+    </section>
+
+    <section id="step-panel-1" data-step-panel="1" class="flex">
+      <div id="cad-shell" class="relative grid w-full" style="grid-template-columns: 64px minmax(0, 1fr) 320px; min-height: calc(100vh - 178px);">
+        <aside class="flex flex-col items-center gap-11 border-r border-obsidian/30 bg-canvas-white py-16" aria-label="Herramientas">
+          <button type="button" data-tool="select" class="cad-tool" title="Seleccionar (V)" aria-label="Seleccionar">
+            <span class="cad-tool-icon">V</span>
+          </button>
+          <button type="button" data-tool="pan" class="cad-tool" title="Pan (H, espacio)" aria-label="Pan">
+            <span class="cad-tool-icon">H</span>
+          </button>
+          <div class="my-8 h-1 w-8 bg-obsidian/30"></div>
+          <button type="button" data-tool="beam" class="cad-tool" title="Viga / Linea (L)" aria-label="Viga">
+            <span class="cad-tool-icon">L</span>
+          </button>
+          <button type="button" data-tool="column" class="cad-tool" title="Columna / Rectangulo (R)" aria-label="Columna">
+            <span class="cad-tool-icon">R</span>
+          </button>
+          <button type="button" data-tool="slab" class="cad-tool" title="Losa / Poligono (P)" aria-label="Losa">
+            <span class="cad-tool-icon">P</span>
+          </button>
+          <div class="my-8 h-1 w-8 bg-obsidian/30"></div>
+          <button type="button" id="cad-undo" class="cad-tool" title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
+            <span class="cad-tool-icon">↶</span>
+          </button>
+          <button type="button" id="cad-redo" class="cad-tool" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer">
+            <span class="cad-tool-icon">↷</span>
+          </button>
+          <button type="button" id="cad-delete" class="cad-tool" title="Eliminar (Supr)" aria-label="Eliminar">
+            <span class="cad-tool-icon">×</span>
+          </button>
+          <button type="button" id="cad-fit" class="cad-tool" title="Encajar (Shift+0)" aria-label="Encajar vista">
+            <span class="cad-tool-icon">⊡</span>
+          </button>
+          <button type="button" id="cad-help-toggle" class="cad-tool mt-auto" title="Atajos" aria-label="Mostrar atajos">
+            <span class="cad-tool-icon">?</span>
+          </button>
+        </aside>
+
+        <div class="relative bg-[#fafafa]">
+          <canvas
+            id="cad-canvas"
+            tabindex="0"
+            class="absolute inset-0 block h-full w-full outline-none"
+          ></canvas>
+          <div id="cad-hud-top" class="pointer-events-none absolute left-22 right-22 top-16 flex flex-wrap items-center gap-11 text-body-sm">
+            <span id="hud-tool" class="rounded-full border border-obsidian bg-canvas-white px-16 pt-13 pb-13 font-bold">Select</span>
+            <span id="hud-snap" class="rounded-full border border-obsidian/50 bg-canvas-white px-16 pt-13 pb-13">Snap: ON</span>
+            <span id="hud-ortho" class="rounded-full border border-obsidian/50 bg-canvas-white px-16 pt-13 pb-13">Ortho: OFF</span>
+            <span id="hud-snap-kind" class="rounded-full border border-desert-sienna bg-canvas-white px-16 pt-13 pb-13 hidden">snap</span>
+            <span id="hud-status" class="rounded-full border border-obsidian/30 bg-canvas-white/95 px-16 pt-13 pb-13 text-slate-mist">Listo.</span>
+          </div>
+          <div id="cad-hud-bottom" class="pointer-events-none absolute left-22 right-22 bottom-16 flex flex-wrap items-center justify-between gap-11 text-body-sm">
+            <div class="pointer-events-auto flex flex-wrap items-center gap-11">
+              <span id="hud-coords" class="rounded-full border border-obsidian bg-canvas-white px-16 pt-13 pb-13 font-bold tabular-nums">x: 0.000 m · y: 0.000 m</span>
+              <span id="hud-zoom" class="rounded-full border border-obsidian/30 bg-canvas-white px-16 pt-13 pb-13 tabular-nums">Escala: 80 px/m</span>
+              <span id="hud-measure" class="rounded-full border border-desert-sienna bg-canvas-white px-16 pt-13 pb-13 hidden tabular-nums">—</span>
+            </div>
+            <div class="pointer-events-auto flex flex-wrap items-center gap-11">
+              <Button id="cad-zoom-out" variant="ghost" class="!px-16 !pt-13 !pb-13">−</Button>
+              <Button id="cad-zoom-in" variant="ghost" class="!px-16 !pt-13 !pb-13">+</Button>
+              <Button id="cad-reset-view" variant="ghost" class="!px-16 !pt-13 !pb-13">Reset</Button>
+            </div>
+          </div>
+          <div id="cad-help-panel" class="pointer-events-auto absolute right-22 top-68 hidden max-w-[320px] rounded-3xl border border-obsidian bg-canvas-white p-22 text-body-sm shadow-lg">
+            <h4 class="text-subheading leading-subheading tracking-subheading">Atajos</h4>
+            <ul class="mt-11 grid gap-8 text-slate-mist">
+              <li><strong class="text-obsidian">V</strong> Seleccionar</li>
+              <li><strong class="text-obsidian">H</strong> / Espacio · Pan</li>
+              <li><strong class="text-obsidian">L</strong> Viga</li>
+              <li><strong class="text-obsidian">R</strong> Columna</li>
+              <li><strong class="text-obsidian">P</strong> Losa (poligono)</li>
+              <li><strong class="text-obsidian">Supr</strong> Eliminar seleccion</li>
+              <li><strong class="text-obsidian">F8</strong> Toggle ortho</li>
+              <li><strong class="text-obsidian">F9</strong> Toggle snap</li>
+              <li><strong class="text-obsidian">Ctrl+Z</strong> / <strong class="text-obsidian">Ctrl+Shift+Z</strong> Undo / Redo</li>
+              <li><strong class="text-obsidian">Ctrl+A</strong> Seleccionar todo</li>
+              <li><strong class="text-obsidian">Esc</strong> Cancelar dibujo / seleccion</li>
+              <li><strong class="text-obsidian">Rueda</strong> Zoom centrado en cursor</li>
+              <li><strong class="text-obsidian">+/−</strong> Zoom in / out</li>
+              <li><strong class="text-obsidian">0</strong> Reset vista · <strong class="text-obsidian">Shift+0</strong> Encajar</li>
+            </ul>
+          </div>
+        </div>
+
+        <aside class="flex flex-col gap-11 overflow-y-auto border-l border-obsidian/30 bg-canvas-white p-22" aria-label="Propiedades">
+          <div>
+            <h4 class="text-subheading leading-subheading tracking-subheading">Propiedades</h4>
+            <p id="cad-selection-summary" class="mt-8 text-slate-mist">Sin seleccion.</p>
+          </div>
+
+          <fieldset class="grid gap-11 rounded-3xl border border-obsidian/30 p-16" data-prop-group="defaults">
+            <legend class="px-8 text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Defaults</legend>
+            <label class="grid gap-8">
+              <span class="text-body-sm font-bold">Columna ancho (m)</span>
+              <input id="prop-default-col-w" type="number" min="0.05" step="0.05" value="0.35" class="cad-input" />
+            </label>
+            <label class="grid gap-8">
+              <span class="text-body-sm font-bold">Columna alto (m)</span>
+              <input id="prop-default-col-d" type="number" min="0.05" step="0.05" value="0.35" class="cad-input" />
+            </label>
+            <label class="grid gap-8">
+              <span class="text-body-sm font-bold">Viga ancho (m)</span>
+              <input id="prop-default-beam-w" type="number" min="0.05" step="0.05" value="0.25" class="cad-input" />
+            </label>
+            <label class="grid gap-8">
+              <span class="text-body-sm font-bold">Viga canto (m)</span>
+              <input id="prop-default-beam-d" type="number" min="0.05" step="0.05" value="0.5" class="cad-input" />
+            </label>
+            <label class="grid gap-8">
+              <span class="text-body-sm font-bold">Losa espesor (m)</span>
+              <input id="prop-default-slab-t" type="number" min="0.05" step="0.01" value="0.2" class="cad-input" />
+            </label>
+          </fieldset>
+
+          <fieldset id="prop-selection" class="hidden grid gap-11 rounded-3xl border border-obsidian p-16" data-prop-group="selection">
+            <legend class="px-8 text-body-sm font-bold uppercase tracking-[0.18em] text-desert-sienna">Seleccion</legend>
+            <div id="prop-selection-fields" class="grid gap-11"></div>
+          </fieldset>
+
+          <div class="mt-auto grid gap-11 rounded-3xl border border-obsidian/30 p-16">
+            <Button id="save-drawing-btn" variant="primary">Guardar dibujo</Button>
+            <Button id="clear-drawing-btn" variant="ghost">Limpiar dibujo</Button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="step-panel-2" data-step-panel="2" class="hidden px-22 py-31">
+      <div class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
+        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 2 · Modelo simplificado y cargas</h3>
+        <p class="mt-11 text-slate-mist">
+          Si el dibujo contiene una losa, sus dimensiones se usaran como luces. En caso contrario se utilizan los valores manuales.
+        </p>
+        <form id="loads-form" class="mt-16 grid gap-11 sm:grid-cols-2">
+          <label class="flex flex-col gap-11">
+            <span class="font-bold">Luz X manual (m)</span>
+            <input id="span-x" type="number" min="2" step="0.1" value="5" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+          </label>
+          <label class="flex flex-col gap-11">
+            <span class="font-bold">Luz Y manual (m)</span>
+            <input id="span-y" type="number" min="2" step="0.1" value="4" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+          </label>
+          <label class="flex flex-col gap-11">
+            <span class="font-bold">Espesor losa (m)</span>
+            <input id="slab-thickness" type="number" min="0.1" step="0.01" value="0.2" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+          </label>
+          <label class="flex flex-col gap-11">
+            <span class="font-bold">Carga viva (kN/m2)</span>
+            <input id="live-load" type="number" min="0" step="0.1" value="2" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+          </label>
+          <label class="flex flex-col gap-11 sm:col-span-2">
+            <span class="font-bold">Carga muerta adicional (kN/m2)</span>
+            <input id="dead-load" type="number" min="0" step="0.1" value="1.5" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
+          </label>
+        </form>
+        <div class="mt-16 flex flex-wrap gap-11">
+          <Button id="build-model-btn" variant="primary">Generar modelo simplificado</Button>
+        </div>
+        <pre id="model-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
+        <div class="mt-16">
+          <h4 class="text-heading-sm leading-heading-sm tracking-heading-sm">Vista 3D</h4>
+          <p class="mt-11 text-slate-mist">Orbita con arrastre, zoom con la rueda.</p>
+          <div
+            id="model-3d-container"
+            class="relative mt-11 h-[min(40vh,320px)] min-h-[220px] w-full overflow-hidden rounded-3xl border border-obsidian bg-[#f8f8f8]"
+          ></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="step-panel-3" data-step-panel="3" class="hidden px-22 py-31">
+      <div class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
+        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Calculo y dimensionamiento</h3>
+        <p class="mt-11 text-slate-mist">Ejecuta el motor de calculo sobre el modelo simplificado actual.</p>
+        <div class="mt-16 flex flex-wrap gap-11">
+          <Button id="run-calc-btn" variant="dark">Ejecutar calculo</Button>
+          <Button id="export-json-btn" variant="ghost">Descargar snapshot JSON</Button>
+        </div>
+        <pre id="calc-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
+      </div>
+    </section>
+
+    <p id="editor-status" class="border-t border-obsidian/20 px-22 py-13 text-slate-mist" role="status" aria-live="polite">
+      Selecciona herramienta para dibujar en planta.
+    </p>
+  </main>
+
+  <style>
+    .cad-tool {
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      border: 1px solid #000d10;
+      background: #ffffff;
+      color: #000d10;
+      transition: background-color 120ms ease, color 120ms ease;
+      cursor: pointer;
+    }
+    .cad-tool:hover { background: #000d10; color: #ffffff; }
+    .cad-tool[aria-pressed="true"] { background: #000d10; color: #ffffff; }
+    .cad-tool[data-tool][aria-pressed="true"] { background: #bc7155; color: #ffffff; border-color: #bc7155; }
+    .cad-tool-icon { font-weight: 700; font-size: 16px; line-height: 1; }
+    .cad-input {
+      border-radius: 9999px;
+      border: 1px solid #000d10;
+      padding: 10px 16px;
+      font: 700 14px/1 inherit;
+      background: #ffffff;
+      color: #000d10;
+    }
+    .cad-input:focus { outline: 2px solid #bc7155; outline-offset: 1px; }
+    .cad-step-pill[aria-selected="true"] { background: #000d10; color: #ffffff; }
+    #cad-canvas { touch-action: none; cursor: default; }
+    @media (max-width: 1023px) {
+      #cad-shell { grid-template-columns: 56px minmax(0, 1fr); }
+      #cad-shell aside[aria-label="Propiedades"] { display: none; }
+    }
+  </style>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+    import { createSimplifiedModelViewer } from '../lib/modelViewer3d';
+    import { calculateDemands, calculateDesign, calculateLoads } from '@nodouno/calc';
+    import type { BuildingInput } from '@nodouno/calc';
+    import { mountEditor2d } from '@nodouno/editor2d';
+    import type { DrawingState, Editor2DHandle, HudInfo, ToolKind } from '@nodouno/editor2d';
+    import { migrateDrawingData, toLegacyFreeDrawing } from '@nodouno/editor2d/migration';
+    import { deriveSimplifiedModel } from '@nodouno/editor2d/derivedModel';
+    import {
+      DEFAULT_PROJECT_SPECS,
+      concreteStrengthMpa,
+      normalizeProjectSpecs
+    } from '@nodouno/shared';
+    import { createTrpcClient, getPublicApiUrl } from '../lib/trpc';
+
+    const sessionLabel = document.querySelector('#session-label');
+    const logoutBtn = document.querySelector('#logout-btn');
+    const activeProjectLabel = document.querySelector('#active-project-label');
+    const editorStatus = document.querySelector('#editor-status');
+    const stepPills = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-step-pill]'));
+    const stepPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-step-panel]'));
+    const prevStepBtn = document.querySelector<HTMLButtonElement>('#prev-step-btn');
+    const nextStepBtn = document.querySelector<HTMLButtonElement>('#next-step-btn');
+    const buildModelBtn = document.querySelector<HTMLButtonElement>('#build-model-btn');
+    const runCalcBtn = document.querySelector<HTMLButtonElement>('#run-calc-btn');
+    const exportJsonBtn = document.querySelector<HTMLButtonElement>('#export-json-btn');
+    const modelOutput = document.querySelector<HTMLElement>('#model-output');
+    const calcOutput = document.querySelector<HTMLElement>('#calc-output');
+    const model3dContainer = document.querySelector<HTMLElement>('#model-3d-container');
+    const loadsForm = document.querySelector<HTMLFormElement>('#loads-form');
+    const helpToggle = document.querySelector<HTMLButtonElement>('#cad-help-toggle');
+    const helpPanel = document.querySelector<HTMLElement>('#cad-help-panel');
+    const saveDrawingBtn = document.querySelector<HTMLButtonElement>('#save-drawing-btn');
+    const clearDrawingBtn = document.querySelector<HTMLButtonElement>('#clear-drawing-btn');
+    const undoBtn = document.querySelector<HTMLButtonElement>('#cad-undo');
+    const redoBtn = document.querySelector<HTMLButtonElement>('#cad-redo');
+    const deleteBtn = document.querySelector<HTMLButtonElement>('#cad-delete');
+    const fitBtn = document.querySelector<HTMLButtonElement>('#cad-fit');
+    const zoomInBtn = document.querySelector<HTMLButtonElement>('#cad-zoom-in');
+    const zoomOutBtn = document.querySelector<HTMLButtonElement>('#cad-zoom-out');
+    const resetViewBtn = document.querySelector<HTMLButtonElement>('#cad-reset-view');
+    const toolButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-tool]'));
+    const hudTool = document.querySelector<HTMLElement>('#hud-tool');
+    const hudSnap = document.querySelector<HTMLElement>('#hud-snap');
+    const hudOrtho = document.querySelector<HTMLElement>('#hud-ortho');
+    const hudSnapKind = document.querySelector<HTMLElement>('#hud-snap-kind');
+    const hudStatus = document.querySelector<HTMLElement>('#hud-status');
+    const hudCoords = document.querySelector<HTMLElement>('#hud-coords');
+    const hudZoom = document.querySelector<HTMLElement>('#hud-zoom');
+    const hudMeasure = document.querySelector<HTMLElement>('#hud-measure');
+    const selectionSummary = document.querySelector<HTMLElement>('#cad-selection-summary');
+    const propSelection = document.querySelector<HTMLFieldSetElement>('#prop-selection');
+    const propSelectionFields = document.querySelector<HTMLElement>('#prop-selection-fields');
+    const propDefaultColW = document.querySelector<HTMLInputElement>('#prop-default-col-w');
+    const propDefaultColD = document.querySelector<HTMLInputElement>('#prop-default-col-d');
+    const propDefaultBeamW = document.querySelector<HTMLInputElement>('#prop-default-beam-w');
+    const propDefaultBeamD = document.querySelector<HTMLInputElement>('#prop-default-beam-d');
+    const propDefaultSlabT = document.querySelector<HTMLInputElement>('#prop-default-slab-t');
+    const specRegulation = document.querySelector<HTMLSelectElement>('#spec-regulation');
+    const specSteel = document.querySelector<HTMLSelectElement>('#spec-steel');
+    const specConcrete = document.querySelector<HTMLSelectElement>('#spec-concrete');
+    const specsStatus = document.querySelector<HTMLElement>('#specs-status');
+    const canvas = document.querySelector<HTMLCanvasElement>('#cad-canvas');
+
+    const queryProjectId = new URLSearchParams(window.location.search).get('project');
+    const activeProjectId = queryProjectId || localStorage.getItem('active-project-id');
+    const activeProjectName = localStorage.getItem('active-project-name');
+
+    let currentStep: 1 | 2 | 3 = 1;
+    let editor: Editor2DHandle | null = null;
+    let drawingDirty = false;
+    let simplifiedModel: BuildingInput | null = null;
+    let lastResults: Record<string, unknown> | null = null;
+    let viewer3d: ReturnType<typeof createSimplifiedModelViewer> | null = null;
+    let projectSpecs = DEFAULT_PROJECT_SPECS;
+
+    const setEditorStatus = (message: string, isError = false) => {
+      if (!editorStatus) return;
+      editorStatus.textContent = message;
+      editorStatus.classList.toggle('text-desert-sienna', isError);
+      editorStatus.classList.toggle('text-slate-mist', !isError);
+    };
+
+    const setSpecsStatus = (message: string, isError = false) => {
+      if (!specsStatus) return;
+      specsStatus.textContent = message;
+      specsStatus.classList.toggle('text-desert-sienna', isError);
+      specsStatus.classList.toggle('text-slate-mist', !isError);
+    };
+
+    const syncSpecsControls = () => {
+      if (specRegulation) specRegulation.value = projectSpecs.regulation;
+      if (specSteel) specSteel.value = projectSpecs.steel;
+      if (specConcrete) specConcrete.value = projectSpecs.concrete;
+    };
+
+    const setStep = (step: 1 | 2 | 3) => {
+      currentStep = step;
+      stepPanels.forEach((panel) => {
+        const panelStep = Number(panel.getAttribute('data-step-panel'));
+        panel.classList.toggle('hidden', panelStep !== currentStep);
+      });
+      stepPills.forEach((pill) => {
+        const pillStep = Number(pill.getAttribute('data-step-pill'));
+        const isActive = pillStep === currentStep;
+        pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      if (nextStepBtn) nextStepBtn.textContent = currentStep === 3 ? 'Finalizado' : 'Siguiente';
+    };
+
+    stepPills.forEach((pill) => {
+      pill.addEventListener('click', () => {
+        const step = Number(pill.getAttribute('data-step-pill')) as 1 | 2 | 3;
+        if (step === 1 || step === 2 || step === 3) setStep(step);
+      });
+    });
+
+    const persistProject = async (values: Record<string, unknown>) => {
+      if (!supabase || !activeProjectId) return { error: new Error('Proyecto no seleccionado.') };
+      return supabase.from('projects').update(values).eq('id', activeProjectId);
+    };
+
+    const parseLoadsInput = () => ({
+      spanX: Number(loadsForm?.querySelector<HTMLInputElement>('#span-x')?.value ?? '5') || 5,
+      spanY: Number(loadsForm?.querySelector<HTMLInputElement>('#span-y')?.value ?? '4') || 4,
+      thicknessM: Number(loadsForm?.querySelector<HTMLInputElement>('#slab-thickness')?.value ?? '0.2') || 0.2,
+      deadLoadKnm2: Number(loadsForm?.querySelector<HTMLInputElement>('#dead-load')?.value ?? '1.5') || 1.5,
+      liveLoadKnm2: Number(loadsForm?.querySelector<HTMLInputElement>('#live-load')?.value ?? '2') || 2
+    });
+
+    const updateActiveToolButton = (tool: ToolKind) => {
+      toolButtons.forEach((btn) => {
+        const isActive = btn.getAttribute('data-tool') === tool;
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+    };
+
+    const formatMeters = (n: number) => `${n.toFixed(3)} m`;
+    const formatArea = (n: number) => `${n.toFixed(3)} m²`;
+
+    const renderMeasure = (measure: HudInfo['measure']) => {
+      if (!hudMeasure) return;
+      if (!measure) {
+        hudMeasure.classList.add('hidden');
+        hudMeasure.textContent = '';
+        return;
+      }
+      const parts: string[] = [];
+      if (typeof measure.lengthM === 'number') parts.push(`L: ${formatMeters(measure.lengthM)}`);
+      if (typeof measure.widthM === 'number') parts.push(`W: ${formatMeters(measure.widthM)}`);
+      if (typeof measure.heightM === 'number') parts.push(`H: ${formatMeters(measure.heightM)}`);
+      if (typeof measure.areaM2 === 'number') parts.push(`A: ${formatArea(measure.areaM2)}`);
+      if (typeof measure.sideCount === 'number') parts.push(`n=${measure.sideCount}`);
+      if (parts.length === 0) {
+        hudMeasure.classList.add('hidden');
+        hudMeasure.textContent = '';
+        return;
+      }
+      hudMeasure.classList.remove('hidden');
+      hudMeasure.textContent = parts.join(' · ');
+    };
+
+    const renderHud = (hud: HudInfo) => {
+      if (hudCoords)
+        hudCoords.textContent = hud.cursor
+          ? `x: ${hud.cursor.x.toFixed(3)} m · y: ${hud.cursor.y.toFixed(3)} m`
+          : 'x: — · y: —';
+      if (hudZoom) hudZoom.textContent = `Escala: ${Math.round(hud.zoom)} px/m`;
+      if (hudTool) hudTool.textContent = hud.tool.charAt(0).toUpperCase() + hud.tool.slice(1);
+      if (hudSnap) hudSnap.textContent = `Snap: ${hud.snap.enabled ? 'ON' : 'OFF'}`;
+      if (hudOrtho) hudOrtho.textContent = `Ortho: ${hud.ortho ? 'ON' : 'OFF'}`;
+      if (hudSnapKind) {
+        if (hud.snap.kind === 'none') {
+          hudSnapKind.classList.add('hidden');
+        } else {
+          hudSnapKind.classList.remove('hidden');
+          hudSnapKind.textContent = `→ ${hud.snap.kind}`;
+        }
+      }
+      if (hudStatus) hudStatus.textContent = hud.status;
+      if (undoBtn) undoBtn.disabled = !hud.canUndo;
+      if (redoBtn) redoBtn.disabled = !hud.canRedo;
+      updateActiveToolButton(hud.tool);
+      renderMeasure(hud.measure);
+    };
+
+    const renderPropertiesPanel = () => {
+      if (!editor || !selectionSummary || !propSelection || !propSelectionFields) return;
+      const entities = editor.getSelectionEntities();
+      propSelectionFields.innerHTML = '';
+      if (entities.length === 0) {
+        selectionSummary.textContent = 'Sin seleccion.';
+        propSelection.classList.add('hidden');
+        return;
+      }
+      propSelection.classList.remove('hidden');
+      if (entities.length > 1) {
+        selectionSummary.textContent = `Seleccion multiple: ${entities.length} elementos.`;
+        return;
+      }
+      const entity = entities[0];
+      selectionSummary.textContent = `${entity.type.toUpperCase()} ${entity.id.slice(-4)}`;
+
+      const numberInput = (label: string, value: number, step: number, onCommit: (v: number) => void) => {
+        const wrapper = document.createElement('label');
+        wrapper.className = 'grid gap-8';
+        const span = document.createElement('span');
+        span.className = 'text-body-sm font-bold';
+        span.textContent = label;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'cad-input';
+        input.step = String(step);
+        input.value = String(value);
+        input.addEventListener('change', () => {
+          const v = Number(input.value);
+          if (Number.isFinite(v)) onCommit(v);
+        });
+        wrapper.appendChild(span);
+        wrapper.appendChild(input);
+        return wrapper;
+      };
+
+      if (entity.type === 'column') {
+        propSelectionFields.appendChild(
+          numberInput('Ancho (m)', entity.widthM, 0.05, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'column' ? { ...e, widthM: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('Alto (m)', entity.depthM, 0.05, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'column' ? { ...e, depthM: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('Centro X (m)', entity.cx, 0.1, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'column' ? { ...e, cx: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('Centro Y (m)', entity.cy, 0.1, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'column' ? { ...e, cy: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('Rotacion (°)', (entity.rotation * 180) / Math.PI, 5, (v) =>
+            editor!.updateSelectionProps((e) =>
+              e.type === 'column' ? { ...e, rotation: (v * Math.PI) / 180 } : e
+            )
+          )
+        );
+      } else if (entity.type === 'beam') {
+        propSelectionFields.appendChild(
+          numberInput('Ancho (m)', entity.widthM, 0.05, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'beam' ? { ...e, widthM: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('Canto (m)', entity.depthM, 0.05, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'beam' ? { ...e, depthM: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('X1 (m)', entity.x1, 0.1, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'beam' ? { ...e, x1: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('Y1 (m)', entity.y1, 0.1, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'beam' ? { ...e, y1: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('X2 (m)', entity.x2, 0.1, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'beam' ? { ...e, x2: v } : e))
+          )
+        );
+        propSelectionFields.appendChild(
+          numberInput('Y2 (m)', entity.y2, 0.1, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'beam' ? { ...e, y2: v } : e))
+          )
+        );
+      } else {
+        propSelectionFields.appendChild(
+          numberInput('Espesor (m)', entity.thicknessM, 0.01, (v) =>
+            editor!.updateSelectionProps((e) => (e.type === 'slab' ? { ...e, thicknessM: v } : e))
+          )
+        );
+        const info = document.createElement('p');
+        info.className = 'text-slate-mist';
+        info.textContent = `Vertices: ${entity.points.length}`;
+        propSelectionFields.appendChild(info);
+      }
+    };
+
+    const sync3dViewer = () => {
+      if (!model3dContainer) return;
+      if (!viewer3d) {
+        viewer3d = createSimplifiedModelViewer(model3dContainer, simplifiedModel);
+      } else {
+        viewer3d.setModel(simplifiedModel);
+      }
+    };
+
+    if (!supabase) {
+      window.location.href = '/login';
+    } else {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        window.location.href = '/login';
+      } else if (sessionLabel) {
+        sessionLabel.textContent = `Sesion como ${data.session.user.email ?? 'usuario'}.`;
+      }
+    }
+
+    if (!activeProjectId) {
+      if (activeProjectLabel) {
+        activeProjectLabel.textContent = 'Sin proyecto activo';
+      }
+      setEditorStatus('Selecciona un proyecto en dashboard para seguir.', true);
+    } else if (activeProjectLabel) {
+      activeProjectLabel.textContent = `${activeProjectName ?? 'Proyecto'}`;
+    }
+
+    let initialDrawing: DrawingState | null = null;
+    if (activeProjectId && supabase) {
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('name, specs, drawing_data, simplified_model, calculations, dimensioning')
+        .eq('id', activeProjectId)
+        .maybeSingle();
+
+      projectSpecs = normalizeProjectSpecs(projectData?.specs);
+      syncSpecsControls();
+      setSpecsStatus('Especificaciones listas.');
+
+      if (projectData?.drawing_data) {
+        initialDrawing = migrateDrawingData(projectData.drawing_data);
+      }
+      if (projectData?.simplified_model) {
+        simplifiedModel = projectData.simplified_model as BuildingInput;
+        if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
+      }
+      if (projectData?.calculations || projectData?.dimensioning) {
+        lastResults = {
+          calculations: projectData.calculations,
+          dimensioning: projectData.dimensioning
+        };
+        if (calcOutput) calcOutput.textContent = JSON.stringify(lastResults, null, 2);
+      }
+    }
+
+    if (canvas) {
+      editor = mountEditor2d(canvas, {
+        initialState: initialDrawing ?? undefined,
+        initialTool: 'select',
+        onChange: () => {
+          drawingDirty = true;
+          renderPropertiesPanel();
+        },
+        onHud: (hud) => {
+          renderHud(hud);
+          if (hudStatus && hud.status) hudStatus.textContent = hud.status;
+        }
+      });
+      renderPropertiesPanel();
+      editor.fit();
+    }
+
+    setStep(1);
+
+    if (!activeProjectId) {
+      projectSpecs = DEFAULT_PROJECT_SPECS;
+      syncSpecsControls();
+      setSpecsStatus('Sin proyecto activo.', true);
+    }
+
+    window.addEventListener('pagehide', () => {
+      viewer3d?.dispose();
+      viewer3d = null;
+      editor?.dispose();
+      editor = null;
+    });
+
+    const persistSpecs = async () => {
+      if (!activeProjectId) return;
+      projectSpecs = normalizeProjectSpecs({
+        regulation: specRegulation?.value ?? projectSpecs.regulation,
+        steel: specSteel?.value ?? projectSpecs.steel,
+        concrete: specConcrete?.value ?? projectSpecs.concrete
+      });
+      syncSpecsControls();
+      setSpecsStatus('Guardando...');
+      const { error } = await persistProject({ specs: projectSpecs });
+      if (error && /column .*specs.*does not exist/i.test(error.message)) {
+        setSpecsStatus('Falta migracion de DB para persistir.', true);
+        return;
+      }
+      if (error) {
+        setSpecsStatus(`Error: ${error.message}`, true);
+        return;
+      }
+      setSpecsStatus('Guardadas.');
+    };
+
+    [specRegulation, specSteel, specConcrete].forEach((el) => el?.addEventListener('change', persistSpecs));
+
+    toolButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tool = btn.getAttribute('data-tool') as ToolKind | null;
+        if (!tool || !editor) return;
+        editor.setTool(tool);
+      });
+    });
+
+    undoBtn?.addEventListener('click', () => editor?.undo());
+    redoBtn?.addEventListener('click', () => editor?.redo());
+    deleteBtn?.addEventListener('click', () => editor?.deleteSelection());
+    fitBtn?.addEventListener('click', () => editor?.fit());
+    zoomInBtn?.addEventListener('click', () => editor?.zoomIn());
+    zoomOutBtn?.addEventListener('click', () => editor?.zoomOut());
+    resetViewBtn?.addEventListener('click', () => editor?.resetView());
+
+    helpToggle?.addEventListener('click', () => {
+      helpPanel?.classList.toggle('hidden');
+    });
+
+    const applyDefaultsToEditor = () => {
+      if (!editor) return;
+      editor.setColumnSection({
+        widthM: Number(propDefaultColW?.value) || 0.35,
+        depthM: Number(propDefaultColD?.value) || 0.35
+      });
+      editor.setBeamSection({
+        widthM: Number(propDefaultBeamW?.value) || 0.25,
+        depthM: Number(propDefaultBeamD?.value) || 0.5
+      });
+      editor.setSlabThicknessM(Number(propDefaultSlabT?.value) || 0.2);
+    };
+    applyDefaultsToEditor();
+    [propDefaultColW, propDefaultColD, propDefaultBeamW, propDefaultBeamD, propDefaultSlabT].forEach((input) => {
+      input?.addEventListener('change', applyDefaultsToEditor);
+    });
+
+    saveDrawingBtn?.addEventListener('click', async () => {
+      if (!editor) return;
+      const state = editor.getState();
+      const payload = {
+        ...state,
+        createdAt: new Date().toISOString(),
+        freeDrawing: toLegacyFreeDrawing(state)
+      };
+      setEditorStatus('Guardando drawing_data...');
+      const { error } = await persistProject({ drawing_data: payload, status: 'drawn' });
+      if (error) {
+        setEditorStatus(`Error al guardar dibujo: ${error.message}`, true);
+        return;
+      }
+      drawingDirty = false;
+      setEditorStatus('Dibujo 2D guardado.');
+    });
+
+    clearDrawingBtn?.addEventListener('click', () => {
+      if (!editor) return;
+      editor.setState(
+        {
+          version: 4,
+          createdAt: new Date().toISOString(),
+          grid: editor.getState().grid,
+          entities: { columns: [], beams: [], slabs: [] }
+        },
+        { commit: true }
+      );
+      renderPropertiesPanel();
+      setEditorStatus('Dibujo limpiado.');
+    });
+
+    buildModelBtn?.addEventListener('click', async () => {
+      const fallback = parseLoadsInput();
+      const state = editor?.getState();
+      simplifiedModel = state ? deriveSimplifiedModel(state, fallback) : ({
+        slab: {
+          spanM: Math.max(fallback.spanX, fallback.spanY),
+          thicknessM: fallback.thicknessM,
+          deadLoadKnm2: fallback.deadLoadKnm2,
+          liveLoadKnm2: fallback.liveLoadKnm2
+        },
+        beams: [],
+        columns: [],
+        materials: { fckMpa: 25, fyMpa: 420, phiFlexion: 0.9, phiShear: 0.75 }
+      } as BuildingInput);
+
+      const materials = simplifiedModel?.materials;
+      if (materials && typeof materials === 'object') {
+        materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
+        materials.fyMpa = 420;
+      }
+
+      if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
+      sync3dViewer();
+      const { error } = await persistProject({
+        simplified_model: simplifiedModel,
+        status: 'loaded'
+      });
+      if (error) {
+        setEditorStatus(`Modelo simplificado generado, pero no se pudo guardar: ${error.message}`, true);
+        return;
+      }
+      setEditorStatus('Modelo simplificado guardado.');
+    });
+
+    runCalcBtn?.addEventListener('click', async () => {
+      if (!simplifiedModel) {
+        setEditorStatus('Primero confirma el modelo simplificado en el paso 2.', true);
+        return;
+      }
+      setEditorStatus('Ejecutando calculo y dimensionamiento...');
+      const loads = calculateLoads(simplifiedModel);
+      const demands = calculateDemands(simplifiedModel);
+      const design = calculateDesign(simplifiedModel);
+      lastResults = {
+        calculations: { loads, demands },
+        dimensioning: design
+      };
+      if (calcOutput) calcOutput.textContent = JSON.stringify(lastResults, null, 2);
+      const { error: errCalc } = await persistProject({
+        calculations: lastResults.calculations,
+        status: 'calculated'
+      });
+      if (errCalc) {
+        setEditorStatus(`Calculo completado, pero no se pudo persistir cargas: ${errCalc.message}`, true);
+        return;
+      }
+      const { error: errDim } = await persistProject({
+        dimensioning: lastResults.dimensioning,
+        status: 'dimensioned'
+      });
+      if (errDim) {
+        setEditorStatus(`Dimensionamiento listo, pero no se pudo persistir: ${errDim.message}`, true);
+        return;
+      }
+      setEditorStatus('Calculo y dimensionamiento persistidos.');
+    });
+
+    prevStepBtn?.addEventListener('click', () => {
+      if (currentStep > 1) setStep((currentStep - 1) as 1 | 2 | 3);
+    });
+
+    nextStepBtn?.addEventListener('click', async () => {
+      if (currentStep === 1 && editor && activeProjectId) {
+        const state = editor.getState();
+        const payload = {
+          ...state,
+          createdAt: new Date().toISOString(),
+          freeDrawing: toLegacyFreeDrawing(state)
+        };
+        await persistProject({ drawing_data: payload, status: 'drawn' });
+      }
+      if (currentStep === 2 && !simplifiedModel) {
+        const fallback = parseLoadsInput();
+        const state = editor?.getState();
+        if (state) {
+          simplifiedModel = deriveSimplifiedModel(state, fallback) as BuildingInput;
+          if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
+          await persistProject({ simplified_model: simplifiedModel, status: 'loaded' });
+          sync3dViewer();
+        }
+      }
+      if (currentStep < 3) setStep((currentStep + 1) as 1 | 2 | 3);
+    });
+
+    logoutBtn?.addEventListener('click', async () => {
+      if (!supabase) return;
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    });
+
+    window.addEventListener('beforeunload', (event) => {
+      if (drawingDirty) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    });
+
+    const trpc = () =>
+      createTrpcClient(async () => {
+        if (!supabase) return null;
+        const { data } = await supabase.auth.getSession();
+        return data.session?.access_token ?? null;
+      });
+
+    exportJsonBtn?.addEventListener('click', async () => {
+      const snapshot = {
+        exportedAt: new Date().toISOString(),
+        projectId: activeProjectId,
+        specs: projectSpecs,
+        simplified_model: simplifiedModel,
+        calculations: lastResults?.calculations ?? null,
+        dimensioning: lastResults?.dimensioning ?? null
+      };
+      const client = trpc();
+      if (getPublicApiUrl() && client && activeProjectId) {
+        try {
+          const server = await client.exports.requestJson.mutate({
+            projectId: activeProjectId as string
+          });
+          downloadJsonBlob(`nodouno-export-${activeProjectId}.json`, server.snapshot);
+          setEditorStatus('Snapshot JSON generado (servidor).');
+          return;
+        } catch {
+          /* fallback cliente */
+        }
+      }
+      downloadJsonBlob(`nodouno-export-${activeProjectId ?? 'local'}.json`, snapshot);
+      setEditorStatus('Snapshot JSON descargado (local).');
+    });
+
+    function downloadJsonBlob(filename: string, data: unknown) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</Layout>

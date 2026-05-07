@@ -1,0 +1,30 @@
+
+> @nodouno/web@0.0.1 build D:\GitHub\nodouno\apps\web
+> astro build
+
+11:58:19 [types] Generated 33ms
+11:58:19 [build] output: "static"
+11:58:19 [build] mode: "static"
+11:58:19 [build] directory: D:\GitHub\nodouno\apps\web\dist\
+11:58:19 [build] Collecting build info...
+11:58:19 [build] ✓ Completed in 61ms.
+11:58:19 [build] Building static entrypoints...
+11:58:20 [vite] ✓ built in 1.35s
+11:58:22 [WARN] [vite] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+11:58:22 [vite] ✓ built in 1.28s
+11:58:22 [build] Rearranging server assets...
+
+ generating static routes 
+11:58:22   ├─ /dashboard/index.html (+15ms) 
+11:58:22   ├─ /editor/index.html (+9ms) 
+11:58:22   ├─ /login/index.html (+6ms) 
+11:58:22   ├─ /index.html (+6ms) 
+11:58:22 ✓ Completed in 203ms.
+
+11:58:22 [build] ✓ Completed in 2.92s.
+11:58:22 [build] 4 page(s) built in 2.99s
+11:58:22 [build] Complete!

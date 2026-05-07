@@ -8,7 +8,7 @@ Este documento refleja el estado real del trabajo al cierre de la iteracion actu
 - [x] Sistema visual base monocromatico aplicado (tokens, radios, tipografia y botones).
 - [x] Login y rutas protegidas para `/dashboard` y `/editor` con Supabase.
 - [x] Dashboard con creacion de proyecto inline (sin `prompt`/`alert` para el nombre), carga/listado y apertura de proyecto.
-- [ ] Mejorar UX de eliminacion de proyecto (confirmacion inline no destructiva).
+- [x] Mejorar UX de eliminacion de proyecto (confirmacion inline no destructiva).
 
 ## Fase 2 - Editor 2D + modelo + calculo
 
@@ -18,19 +18,21 @@ Este documento refleja el estado real del trabajo al cierre de la iteracion actu
 - [x] Integracion con motor de calculo existente (`loads`, `demands`, `design`).
 - [x] Persistencia de `calculations` y `dimensioning` en `projects`.
 - [x] Recuperacion en editor del ultimo `drawing_data`/`simplified_model`/resultados cuando existen.
-- [ ] TODO: habilitar edicion geometrica libre (arrastre/edicion de nodos) en vez de solo flujo parametrico.
-- [ ] TODO: pasar a estado `dimensioned` cuando se cierre el pipeline completo de armado final.
+- [x] Edicion geometrica libre tipo CAD basico (canvas infinito, pan/zoom anclado, snap a 0.1 m + endpoints/midpoints, undo/redo, multi-seleccion). Ver `editor2d.md`.
+- [x] `drawing_data` en metros (v4) con migracion tolerante de versiones <= 3.
+- [x] TODO: pasar a estado `dimensioned` cuando se cierre el pipeline completo de armado final.
 
 ## Fase 3 - Visualizacion 3D MVP
 
 - [x] Integracion base de Three.js en la UI del editor.
 - [x] Render MVP de losa, vigas y columnas desde `simplified_model`.
 - [x] Limpieza de recursos al desmontar (`dispose` de geometria/material y `renderer.dispose`).
-- [ ] TODO: controles de camara (orbita/zoom) y etiquetas de elementos.
+- [x] TODO: controles de camara (orbita/zoom) y etiquetas de elementos.
 - [ ] TODO: mostrar armaduras/dimensionado detallado en 3D (post-MVP).
 
 ## Fase 4 - Calidad y cierre de iteracion
 
-- [ ] Correr validaciones completas (`npm run build` y `npm run test`) y mantener verde.
+- [x] `npm run build` y `npm run test` verdes tras rediseno del editor (19/19 tests, build OK).
+- [x] Migracion tolerante de `drawing_data` legacy en lectura + `freeDrawing` legacy en escritura.
 - [ ] Revisar riesgos de datos legacy en `projects` (modelos previos sin campos nuevos).
 - [ ] Definir el siguiente corte: mejoras UX editor + salida de armado mas rica.
