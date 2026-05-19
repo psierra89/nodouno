@@ -68,6 +68,57 @@ Esta sección resume problemas reales que ya ocurrieron y la forma correcta de e
 - API:
   - `GET /healthz` -> 200 y `{"ok":true}`
   - `GET /trpc/health` -> 200
+  - `GET /trpc/projects.list` (con JWT) -> 200 y array JSON
+  - `POST /trpc/projects.create` (con JWT) -> 200 (no 405 HTML de IIS)
 - Frontend:
   - abrir `/login`, `/dashboard`, `/editor`
   - revisar red/console por CORS o 401/500.
+- Login de prueba: ver [credenciales-prueba.md](./credenciales-prueba.md) (email y contraseña solo en `.env`, gitignored).
+
+### 7) Deploy manual de API (si falla GitHub Actions)
+
+El workflow `.github/workflows/deploy-api-azure.yml` puede fallar si el secret `AZUREAPPSERVICE_PUBLISHPROFILE_NODOUNO_API` está caducado o mal copiado (`Publish profile is invalid...`). En ese caso, desplegar desde local con Azure CLI:
+
+**Requisitos:** `az login`, `pnpm install`, `esbuild` en devDependencies de la raíz.
+
+```bash
+# 1) Bundle + artefacto IIS
+mkdir -p .azure-deploy/iis
+pnpm exec esbuild apps/api/src/server.ts \
+  --bundle --platform=node --target=node22 --format=cjs \
+  --outfile=.azure-deploy/iis/server.js
+
+# web.config: copiar el generado en el workflow (WebDAV deshabilitado para permitir POST a /trpc)
+
+# 2) Zip mínimo
+cd .azure-deploy/iis
+zip -r ../api-iis-deploy.zip server.js web.config package.json
+cd ../..
+
+# 3) Deploy
+az webapp deploy \
+  --resource-group nodouno-rg-swedencentral \
+  --name nodouno-api-psierra89 \
+  --src-path .azure-deploy/api-iis-deploy.zip \
+  --type zip
+```
+
+**PowerShell (Windows):** sustituir el paso 2 por `Compress-Archive -Path server.js,web.config,package.json -DestinationPath ../api-iis-deploy.zip -Force` desde `.azure-deploy/iis`.
+
+**Problemas conocidos ya resueltos en este proyecto:**
+- IIS bloqueaba POST → respuesta HTML *"invalid method"* → el cliente tRPC fallaba al parsear JSON. El `web.config` debe quitar `WebDAV` / `WebDAVModule`.
+- Faltaba columna `projects.specs` en Supabase → migración `supabase/migrations/20260519100000_add_project_specs.sql`.
+- Cliente web tRPC v11: `transformer: superjson` va en `httpLink`, no en la raíz de `createTRPCProxyClient`; usar `httpLink` (no `httpBatchLink`) en Azure.
+
+**Arreglar CI (publish profile):**
+
+Si el portal muestra *"La autenticación básica está deshabilitada"* al descargar el perfil:
+
+1. Azure Portal → **nodouno-api-psierra89** → **Configuration** → **General settings**
+2. Activar **SCM Basic Auth Publishing Credentials** = **On** (y guardar)
+3. Volver a **Overview** → **Download publish profile** (`.PublishSettings`)
+4. GitHub → repo → **Settings** → **Secrets** → `AZUREAPPSERVICE_PUBLISHPROFILE_NODOUNO_API` → pegar **todo** el XML del archivo
+
+> Por seguridad, Azure desactiva la auth básica por defecto en apps nuevas. Solo hace falta activarla si usas el secret de publish profile en GitHub Actions. El deploy manual con `az webapp deploy` (arriba) **no** requiere el perfil.
+
+**Alternativa más segura (sin auth básica):** migrar el workflow a **OIDC** con `azure/login@v2` + App Registration en Entra ID (ver [Deploy to Azure App Service](https://learn.microsoft.com/azure/app-service/deploy-github-actions)). Mientras tanto, `az webapp deploy` desde tu máquina con `az login` sigue siendo válido.

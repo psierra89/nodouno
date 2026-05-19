@@ -1,0 +1,72 @@
+---
+import type { IconName } from '../lib/icons';
+import Icon from './Icon.astro';
+
+interface Props {
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  variant?: 'primary' | 'dark' | 'ghost';
+  size?: 'md' | 'sm' | 'cad';
+  icon: IconName;
+  label: string;
+  class?: string;
+}
+
+const {
+  href,
+  type = 'button',
+  variant = 'primary',
+  size = 'md',
+  icon,
+  label,
+  class: className = '',
+  ...rest
+} = Astro.props;
+
+const variantClasses = {
+  primary:
+    'border border-desert-sienna bg-desert-sienna text-canvas-white hover:opacity-90',
+  dark: 'border border-obsidian bg-obsidian text-canvas-white hover:opacity-90',
+  ghost:
+    'border border-obsidian bg-transparent text-obsidian hover:bg-obsidian hover:text-canvas-white'
+};
+
+const sizeClasses = {
+  md: 'h-[46px] w-[46px]',
+  sm: 'h-[40px] w-[40px]',
+  cad: 'h-[44px] w-[44px]'
+};
+
+const iconSize = size === 'sm' ? 18 : 20;
+
+const baseClasses = [
+  'inline-flex items-center justify-center rounded-full border transition-opacity',
+  'disabled:cursor-not-allowed disabled:opacity-45',
+  sizeClasses[size],
+  variantClasses[variant],
+  className
+].join(' ');
+---
+{
+  href ? (
+    <a
+      href={href}
+      class={baseClasses}
+      title={label}
+      aria-label={label}
+      {...rest}
+    >
+      <Icon name={icon} size={iconSize} />
+    </a>
+  ) : (
+    <button
+      type={type}
+      class={baseClasses}
+      title={label}
+      aria-label={label}
+      {...rest}
+    >
+      <Icon name={icon} size={iconSize} />
+    </button>
+  )
+}

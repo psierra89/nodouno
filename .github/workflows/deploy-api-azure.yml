@@ -22,16 +22,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -41,12 +39,17 @@ jobs:
 
       - name: Bundle API for Azure Windows (iisnode)
         run: |
+          mkdir -p .azure-deploy/iis
           pnpm exec esbuild apps/api/src/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=.azure-deploy/iis/server.js
           cat > .azure-deploy/iis/web.config <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
             <system.webServer>
+              <modules runAllManagedModulesForAllRequests="true">
+                <remove name="WebDAVModule" />
+              </modules>
               <handlers>
+                <remove name="WebDAV" />
                 <add name="iisnode" path="server.js" verb="*" modules="iisnode" />
               </handlers>
               <rewrite>

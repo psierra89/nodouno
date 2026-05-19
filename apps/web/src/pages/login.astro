@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+import IconButton from '../components/IconButton.astro';
 import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
 ---
 <Layout>
@@ -19,7 +21,7 @@ import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
         </div>
 
         <div class="flex w-full justify-center">
-          <button id="login-submit" class="inline-flex items-center justify-center rounded-full border border-desert-sienna bg-desert-sienna px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-canvas-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45" type="submit">Entrar</button>
+          <IconButton id="login-submit" type="submit" variant="primary" icon="log-in" label="Entrar" />
         </div>
       </form>
 
@@ -28,7 +30,9 @@ import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
         <a id="register-link" href="#" class="text-obsidian underline underline-offset-3">Crea una aqui.</a>
       </p>
 
-      <a href="/" class="inline-flex items-center gap-8 rounded-full border border-obsidian px-16 py-11 text-obsidian no-underline">&larr; Volver</a>
+      <a href="/" class="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border border-obsidian text-obsidian no-underline transition-colors hover:bg-obsidian hover:text-canvas-white" title="Volver al inicio" aria-label="Volver al inicio">
+        <Icon name="chevron-left" size={20} />
+      </a>
     </section>
   </main>
 
@@ -73,7 +77,11 @@ import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
       });
 
       if (error) {
-        setStatus(`Error: ${error.message}`);
+        const hint =
+          error.message === 'Failed to fetch'
+            ? ' No se pudo contactar Supabase (revisa que el proyecto este activo y las variables PUBLIC_SUPABASE_* en Vercel).'
+            : '';
+        setStatus(`Error: ${error.message}${hint}`);
         return;
       }
       window.location.href = '/dashboard';

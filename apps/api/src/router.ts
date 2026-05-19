@@ -52,9 +52,10 @@ export const appRouter = t.router({
         .eq('user_id', ctx.userId)
         .order('created_at', { ascending: false });
       if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
-      return (data ?? []).map((row: { status?: string }) => ({
+      return (data ?? []).map((row: { status?: string; specs?: unknown }) => ({
         ...row,
-        status: normalizeProjectStatus(row.status)
+        status: normalizeProjectStatus(row.status),
+        specs: normalizeProjectSpecs(row.specs)
       }));
     }),
 
