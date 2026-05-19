@@ -7,6 +7,11 @@ import { createContext } from './context';
 import { appRouter } from './router';
 
 async function main() {
+  // Azure httpPlatformHandler expone el puerto en HTTP_PLATFORM_PORT.
+  if (!process.env.PORT?.trim() && process.env.HTTP_PLATFORM_PORT?.trim()) {
+    process.env.PORT = process.env.HTTP_PLATFORM_PORT.trim();
+  }
+
   const env = loadEnv();
 
   const server = Fastify({

@@ -82,13 +82,12 @@ El workflow `.github/workflows/deploy-api-azure.yml` puede fallar si el secret `
 **Requisitos:** `az login`, `pnpm install`, `esbuild` en devDependencies de la raíz.
 
 ```bash
-# 1) Bundle + artefacto IIS
+# 1) Bundle + artefacto IIS (httpPlatformHandler, no iisnode)
 mkdir -p .azure-deploy/iis
 pnpm exec esbuild apps/api/src/server.ts \
   --bundle --platform=node --target=node22 --format=cjs \
   --outfile=.azure-deploy/iis/server.js
-
-# web.config: copiar el generado en el workflow (WebDAV deshabilitado para permitir POST a /trpc)
+cp apps/api/deploy/web.config .azure-deploy/iis/web.config
 
 # 2) Zip mínimo
 cd .azure-deploy/iis
@@ -106,7 +105,7 @@ az webapp deploy \
 **PowerShell (Windows):** sustituir el paso 2 por `Compress-Archive -Path server.js,web.config,package.json -DestinationPath ../api-iis-deploy.zip -Force` desde `.azure-deploy/iis`.
 
 **Problemas conocidos ya resueltos en este proyecto:**
-- IIS bloqueaba POST → respuesta HTML *"invalid method"* → el cliente tRPC fallaba al parsear JSON. El `web.config` debe quitar `WebDAV` / `WebDAVModule`.
+- IIS + **iisnode** bloqueaba POST → HTML 405 *"invalid method"*. Solución: `apps/api/deploy/web.config` con **httpPlatformHandler** (todos los verbos a Node).
 - Faltaba columna `projects.specs` en Supabase → migración `supabase/migrations/20260519100000_add_project_specs.sql`.
 - Cliente web tRPC v11: `transformer: superjson` va en `httpLink`, no en la raíz de `createTRPCProxyClient`; usar `httpLink` (no `httpBatchLink`) en Azure.
 
