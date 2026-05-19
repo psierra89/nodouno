@@ -39,6 +39,7 @@ jobs:
 
       - name: Bundle API for Azure Windows (iisnode)
         run: |
+          mkdir -p .azure-deploy/iis
           pnpm exec esbuild apps/api/src/server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=.azure-deploy/iis/server.js
           cat > .azure-deploy/iis/web.config <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
