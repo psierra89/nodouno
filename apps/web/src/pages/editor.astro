@@ -23,26 +23,35 @@ import IconButton from '../components/IconButton.astro';
           type="button"
           data-step-pill="1"
           class="cad-step-pill inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-obsidian"
-          title="Paso 1: Dibujo 2D"
-          aria-label="Paso 1: Dibujo 2D"
+          title="Paso 1: Especificaciones"
+          aria-label="Paso 1: Especificaciones"
         >
-          <Icon name="pencil-ruler" size={20} />
+          <Icon name="settings" size={20} />
         </button>
         <button
           type="button"
           data-step-pill="2"
           class="cad-step-pill inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-obsidian"
-          title="Paso 2: Cargas"
-          aria-label="Paso 2: Cargas"
+          title="Paso 2: Dibujo 2D"
+          aria-label="Paso 2: Dibujo 2D"
         >
-          <Icon name="weight" size={20} />
+          <Icon name="pencil-ruler" size={20} />
         </button>
         <button
           type="button"
           data-step-pill="3"
           class="cad-step-pill inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-obsidian"
-          title="Paso 3: Calculo"
-          aria-label="Paso 3: Calculo"
+          title="Paso 3: Cargas"
+          aria-label="Paso 3: Cargas"
+        >
+          <Icon name="weight" size={20} />
+        </button>
+        <button
+          type="button"
+          data-step-pill="4"
+          class="cad-step-pill inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-obsidian"
+          title="Paso 4: Calculo"
+          aria-label="Paso 4: Calculo"
         >
           <Icon name="calculator" size={20} />
         </button>
@@ -53,15 +62,14 @@ import IconButton from '../components/IconButton.astro';
       </div>
     </nav>
 
-    <section class="flex flex-wrap items-end justify-between gap-16 border-b border-obsidian/20 bg-canvas-white px-22 py-16">
-      <div class="flex flex-col gap-8">
-        <span class="text-body-sm font-bold uppercase tracking-[0.2em] text-slate-mist">Especificaciones</span>
-        <p class="max-w-[72ch] text-slate-mist">
+    <section id="step-panel-1" data-step-panel="1" class="px-22 py-31">
+      <div class="mx-auto w-full max-w-[900px] rounded-3xl border border-obsidian p-22">
+        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 1 · Especificaciones</h3>
+        <p class="mt-11 text-slate-mist">
           Reglamento fijo por ahora: CIRSOC 201. Acero fijo: ADN420. Hormigon seleccionable.
         </p>
-      </div>
-      <div class="flex flex-wrap items-end gap-11">
-        <label class="flex flex-col gap-8">
+        <div class="mt-16 flex flex-wrap items-end gap-11">
+          <label class="flex flex-col gap-8">
           <span class="text-body-sm font-bold">Reglamento</span>
           <select id="spec-regulation" class="cad-input min-w-[180px]">
             <option value="CIRSOC_201">CIRSOC 201</option>
@@ -81,14 +89,15 @@ import IconButton from '../components/IconButton.astro';
             <option value="H35">H35</option>
           </select>
         </label>
-        <p id="specs-status" class="min-w-[220px] text-right text-body-sm text-slate-mist" role="status" aria-live="polite">
+        </div>
+        <p id="specs-status" class="mt-16 text-body-sm text-slate-mist" role="status" aria-live="polite">
           Cargando...
         </p>
       </div>
     </section>
 
-    <section id="step-panel-1" data-step-panel="1" class="flex">
-      <div id="cad-shell" class="relative grid w-full" style="grid-template-columns: 64px minmax(0, 1fr) 320px; min-height: calc(100vh - 178px);">
+    <section id="step-panel-2" data-step-panel="2" class="hidden flex">
+      <div id="cad-shell" class="relative grid w-full" style="grid-template-columns: 64px minmax(0, 1fr) 320px; min-height: calc(100vh - 130px);">
         <aside class="flex flex-col items-center gap-11 border-r border-obsidian/30 bg-canvas-white py-16" aria-label="Herramientas">
           <button type="button" data-tool="select" class="cad-tool" title="Seleccionar (V)" aria-label="Seleccionar">
             <Icon name="mouse-pointer" size={20} />
@@ -176,26 +185,34 @@ import IconButton from '../components/IconButton.astro';
             <p id="cad-selection-summary" class="mt-8 text-slate-mist">Sin seleccion.</p>
           </div>
 
-          <fieldset class="grid gap-11 rounded-3xl border border-obsidian/30 p-16" data-prop-group="defaults">
-            <legend class="px-8 text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Defaults</legend>
+          <fieldset id="prop-defaults-column" class="hidden grid gap-11 rounded-3xl border border-obsidian/30 p-16" data-prop-group="defaults-column">
+            <legend class="px-8 text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Columna</legend>
             <label class="grid gap-8">
-              <span class="text-body-sm font-bold">Columna ancho (m)</span>
+              <span class="text-body-sm font-bold">Ancho (m)</span>
               <input id="prop-default-col-w" type="number" min="0.05" step="0.05" value="0.35" class="cad-input" />
             </label>
             <label class="grid gap-8">
-              <span class="text-body-sm font-bold">Columna alto (m)</span>
+              <span class="text-body-sm font-bold">Alto (m)</span>
               <input id="prop-default-col-d" type="number" min="0.05" step="0.05" value="0.35" class="cad-input" />
             </label>
+          </fieldset>
+
+          <fieldset id="prop-defaults-beam" class="hidden grid gap-11 rounded-3xl border border-obsidian/30 p-16" data-prop-group="defaults-beam">
+            <legend class="px-8 text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Viga</legend>
             <label class="grid gap-8">
-              <span class="text-body-sm font-bold">Viga ancho (m)</span>
+              <span class="text-body-sm font-bold">Ancho (m)</span>
               <input id="prop-default-beam-w" type="number" min="0.05" step="0.05" value="0.25" class="cad-input" />
             </label>
             <label class="grid gap-8">
-              <span class="text-body-sm font-bold">Viga canto (m)</span>
+              <span class="text-body-sm font-bold">Canto (m)</span>
               <input id="prop-default-beam-d" type="number" min="0.05" step="0.05" value="0.5" class="cad-input" />
             </label>
+          </fieldset>
+
+          <fieldset id="prop-defaults-slab" class="hidden grid gap-11 rounded-3xl border border-obsidian/30 p-16" data-prop-group="defaults-slab">
+            <legend class="px-8 text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Losa</legend>
             <label class="grid gap-8">
-              <span class="text-body-sm font-bold">Losa espesor (m)</span>
+              <span class="text-body-sm font-bold">Espesor (m)</span>
               <input id="prop-default-slab-t" type="number" min="0.05" step="0.01" value="0.2" class="cad-input" />
             </label>
           </fieldset>
@@ -213,9 +230,9 @@ import IconButton from '../components/IconButton.astro';
       </div>
     </section>
 
-    <section id="step-panel-2" data-step-panel="2" class="hidden px-22 py-31">
+    <section id="step-panel-3" data-step-panel="3" class="hidden px-22 py-31">
       <div class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
-        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 2 · Modelo simplificado y cargas</h3>
+        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Modelo simplificado y cargas</h3>
         <p class="mt-11 text-slate-mist">
           Si el dibujo contiene una losa, sus dimensiones se usaran como luces. En caso contrario se utilizan los valores manuales.
         </p>
@@ -256,9 +273,9 @@ import IconButton from '../components/IconButton.astro';
       </div>
     </section>
 
-    <section id="step-panel-3" data-step-panel="3" class="hidden px-22 py-31">
+    <section id="step-panel-4" data-step-panel="4" class="hidden px-22 py-31">
       <div class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
-        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Calculo y dimensionamiento</h3>
+        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 4 · Calculo y dimensionamiento</h3>
         <p class="mt-11 text-slate-mist">Ejecuta el motor de calculo sobre el modelo simplificado actual.</p>
         <div class="mt-16 flex flex-wrap gap-11">
           <IconButton id="run-calc-btn" variant="dark" icon="calculator" label="Ejecutar calculo" />
@@ -361,6 +378,9 @@ import IconButton from '../components/IconButton.astro';
     const selectionSummary = document.querySelector<HTMLElement>('#cad-selection-summary');
     const propSelection = document.querySelector<HTMLFieldSetElement>('#prop-selection');
     const propSelectionFields = document.querySelector<HTMLElement>('#prop-selection-fields');
+    const propDefaultsColumn = document.querySelector<HTMLFieldSetElement>('#prop-defaults-column');
+    const propDefaultsBeam = document.querySelector<HTMLFieldSetElement>('#prop-defaults-beam');
+    const propDefaultsSlab = document.querySelector<HTMLFieldSetElement>('#prop-defaults-slab');
     const propDefaultColW = document.querySelector<HTMLInputElement>('#prop-default-col-w');
     const propDefaultColD = document.querySelector<HTMLInputElement>('#prop-default-col-d');
     const propDefaultBeamW = document.querySelector<HTMLInputElement>('#prop-default-beam-w');
@@ -376,7 +396,9 @@ import IconButton from '../components/IconButton.astro';
     const activeProjectId = queryProjectId || localStorage.getItem('active-project-id');
     const activeProjectName = localStorage.getItem('active-project-name');
 
-    let currentStep: 1 | 2 | 3 = 1;
+    let currentStep: 1 | 2 | 3 | 4 = 1;
+    let activeTool: ToolKind = 'select';
+    let lastPropertiesHudKey = '';
     let editor: Editor2DHandle | null = null;
     let drawingDirty = false;
     let simplifiedModel: BuildingInput | null = null;
@@ -413,7 +435,7 @@ import IconButton from '../components/IconButton.astro';
       if (specConcrete) specConcrete.value = projectSpecs.concrete;
     };
 
-    const setStep = (step: 1 | 2 | 3) => {
+    const setStep = (step: 1 | 2 | 3 | 4) => {
       currentStep = step;
       stepPanels.forEach((panel) => {
         const panelStep = Number(panel.getAttribute('data-step-panel'));
@@ -425,17 +447,20 @@ import IconButton from '../components/IconButton.astro';
         pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
       });
       if (nextStepBtn) {
-        const label = currentStep === 3 ? 'Flujo completado' : 'Paso siguiente';
+        const label = currentStep === 4 ? 'Flujo completado' : 'Paso siguiente';
         nextStepBtn.setAttribute('aria-label', label);
         nextStepBtn.setAttribute('title', label);
-        nextStepBtn.toggleAttribute('disabled', currentStep === 3);
+        nextStepBtn.toggleAttribute('disabled', currentStep === 4);
+      }
+      if (step === 2 && editor) {
+        requestAnimationFrame(() => editor!.fit());
       }
     };
 
     stepPills.forEach((pill) => {
       pill.addEventListener('click', () => {
-        const step = Number(pill.getAttribute('data-step-pill')) as 1 | 2 | 3;
-        if (step === 1 || step === 2 || step === 3) setStep(step);
+        const step = Number(pill.getAttribute('data-step-pill')) as 1 | 2 | 3 | 4;
+        if (step === 1 || step === 2 || step === 3 || step === 4) setStep(step);
       });
     });
 
@@ -517,24 +542,66 @@ import IconButton from '../components/IconButton.astro';
       if (redoBtn) redoBtn.disabled = !hud.canRedo;
       updateActiveToolButton(hud.tool);
       renderMeasure(hud.measure);
+      activeTool = hud.tool;
+      const hudKey = `${hud.tool}:${hud.selectionCount}`;
+      if (hudKey !== lastPropertiesHudKey) {
+        lastPropertiesHudKey = hudKey;
+        renderPropertiesPanel(hud.tool);
+      }
     };
 
-    const renderPropertiesPanel = () => {
+    const hideAllDefaultPropGroups = () => {
+      propDefaultsColumn?.classList.add('hidden');
+      propDefaultsBeam?.classList.add('hidden');
+      propDefaultsSlab?.classList.add('hidden');
+    };
+
+    const showDefaultPropGroup = (kind: 'column' | 'beam' | 'slab') => {
+      hideAllDefaultPropGroups();
+      if (kind === 'column') propDefaultsColumn?.classList.remove('hidden');
+      if (kind === 'beam') propDefaultsBeam?.classList.remove('hidden');
+      if (kind === 'slab') propDefaultsSlab?.classList.remove('hidden');
+    };
+
+    const renderPropertiesPanel = (tool: ToolKind = activeTool) => {
       if (!editor || !selectionSummary || !propSelection || !propSelectionFields) return;
+      activeTool = tool;
       const entities = editor.getSelectionEntities();
       propSelectionFields.innerHTML = '';
+      hideAllDefaultPropGroups();
+
       if (entities.length === 0) {
-        selectionSummary.textContent = 'Sin seleccion.';
         propSelection.classList.add('hidden');
+        if (tool === 'column') {
+          showDefaultPropGroup('column');
+          selectionSummary.textContent = 'Nueva columna — ajusta dimensiones antes de colocar.';
+        } else if (tool === 'beam') {
+          showDefaultPropGroup('beam');
+          selectionSummary.textContent = 'Nueva viga — ajusta seccion antes de dibujar.';
+        } else if (tool === 'slab') {
+          showDefaultPropGroup('slab');
+          selectionSummary.textContent = 'Nueva losa — ajusta espesor antes de dibujar.';
+        } else {
+          selectionSummary.textContent =
+            tool === 'pan'
+              ? 'Pan activo. Cambia a seleccion o una herramienta de dibujo.'
+              : 'Sin seleccion. Elige herramienta o selecciona un elemento.';
+        }
         return;
       }
       propSelection.classList.remove('hidden');
       if (entities.length > 1) {
         selectionSummary.textContent = `Seleccion multiple: ${entities.length} elementos.`;
+        propSelection.classList.add('hidden');
         return;
       }
       const entity = entities[0];
-      selectionSummary.textContent = `${entity.type.toUpperCase()} ${entity.id.slice(-4)}`;
+      const typeLabels: Record<string, string> = { column: 'Columna', beam: 'Viga', slab: 'Losa' };
+      const typeLabel = typeLabels[entity.type] ?? entity.type;
+      if (propSelection.querySelector('legend')) {
+        propSelection.querySelector('legend')!.textContent = typeLabel;
+      }
+      selectionSummary.textContent = `${typeLabel} · ${entity.id.slice(-4)}`;
 
       const numberInput = (label: string, value: number, step: number, onCommit: (v: number) => void) => {
         const wrapper = document.createElement('label');
@@ -720,7 +787,6 @@ import IconButton from '../components/IconButton.astro';
         },
         onHud: (hud) => {
           renderHud(hud);
-          if (hudStatus && hud.status) hudStatus.textContent = hud.status;
         }
       });
       renderPropertiesPanel();
@@ -770,6 +836,8 @@ import IconButton from '../components/IconButton.astro';
         const tool = btn.getAttribute('data-tool') as ToolKind | null;
         if (!tool || !editor) return;
         editor.setTool(tool);
+        activeTool = tool;
+        renderPropertiesPanel(tool);
       });
     });
 
@@ -871,7 +939,7 @@ import IconButton from '../components/IconButton.astro';
 
     runCalcBtn?.addEventListener('click', async () => {
       if (!simplifiedModel) {
-        setEditorStatus('Primero confirma el modelo simplificado en el paso 2.', true);
+        setEditorStatus('Primero confirma el modelo simplificado en el paso 3.', true);
         return;
       }
       setEditorStatus('Ejecutando calculo y dimensionamiento...');
@@ -903,11 +971,14 @@ import IconButton from '../components/IconButton.astro';
     });
 
     prevStepBtn?.addEventListener('click', () => {
-      if (currentStep > 1) setStep((currentStep - 1) as 1 | 2 | 3);
+      if (currentStep > 1) setStep((currentStep - 1) as 1 | 2 | 3 | 4);
     });
 
     nextStepBtn?.addEventListener('click', async () => {
-      if (currentStep === 1 && editor && activeProjectId) {
+      if (currentStep === 1 && activeProjectId) {
+        await persistSpecs();
+      }
+      if (currentStep === 2 && editor && activeProjectId) {
         const state = editor.getState();
         const payload = {
           ...state,
@@ -916,7 +987,7 @@ import IconButton from '../components/IconButton.astro';
         };
         await persistProject({ drawing_data: payload, status: 'drawn' });
       }
-      if (currentStep === 2 && !simplifiedModel) {
+      if (currentStep === 3 && !simplifiedModel) {
         const fallback = parseLoadsInput();
         const state = editor?.getState();
         if (state) {
@@ -926,7 +997,7 @@ import IconButton from '../components/IconButton.astro';
           sync3dViewer();
         }
       }
-      if (currentStep < 3) setStep((currentStep + 1) as 1 | 2 | 3);
+      if (currentStep < 4) setStep((currentStep + 1) as 1 | 2 | 3 | 4);
     });
 
     logoutBtn?.addEventListener('click', async () => {
