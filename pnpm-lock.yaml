@@ -139,6 +139,13 @@ importers:
         version: 5.9.3
 
   packages/editor2d:
+    dependencies:
+      '@nodouno/calc':
+        specifier: workspace:*
+        version: link:../calc
+      '@nodouno/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       typescript:
         specifier: ^5.8.2

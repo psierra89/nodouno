@@ -3,6 +3,7 @@ import {
   DEFAULT_COLUMN_SECTION,
   DEFAULT_DRAWING_STATE,
   DEFAULT_SLAB_THICKNESS,
+  DEFAULT_SLAB_DEAD_LOAD_KNM2,
   type BeamEntity,
   type ColumnEntity,
   type DrawingState,
@@ -131,7 +132,20 @@ function migrateLegacyEntities(legacy: LegacyEntities | undefined, scalePxPerM: 
     }
   }
 
-  return { columns, beams, slabs };
+  return normalizeSlabEntities({ columns, beams, slabs });
+}
+
+function normalizeSlabEntities(entities: DrawingState['entities']): DrawingState['entities'] {
+  return {
+    ...entities,
+    slabs: entities.slabs.map((slab) => {
+      const props = { ...(slab.props ?? {}) };
+      if (typeof props.deadLoadKnm2 !== 'number' || !Number.isFinite(props.deadLoadKnm2)) {
+        props.deadLoadKnm2 = DEFAULT_SLAB_DEAD_LOAD_KNM2;
+      }
+      return { ...slab, props };
+    })
+  };
 }
 
 interface V4Entities {
@@ -187,7 +201,7 @@ function normaliseV4Entities(input: V4Entities | undefined): DrawingState['entit
       props: (r.props as Record<string, unknown>) ?? {}
     });
   }
-  return { columns, beams, slabs };
+  return normalizeSlabEntities({ columns, beams, slabs });
 }
 
 /**
@@ -211,7 +225,7 @@ export function migrateDrawingData(raw: unknown): DrawingState {
         snapEnabled: grid?.snapEnabled !== false,
         orthoEnabled: grid?.orthoEnabled === true
       },
-      entities: normaliseV4Entities(r.entities as V4Entities | undefined)
+      entities: normalizeSlabEntities(normaliseV4Entities(r.entities as V4Entities | undefined))
     };
   }
 
@@ -240,7 +254,7 @@ export function migrateDrawingData(raw: unknown): DrawingState {
       snapEnabled: grid?.snapEnabled !== false,
       orthoEnabled: false
     },
-    entities
+    entities: normalizeSlabEntities(entities)
   };
 }
 

@@ -1,4 +1,15 @@
+import type { LoadTypologyCode } from '@nodouno/shared';
+
 export type EntityType = 'column' | 'beam' | 'slab';
+
+/** Propiedades de carga por losa (CIRSOC 101) en `SlabEntity.props`. */
+export interface SlabLoadProps {
+  loadTypologyCode?: LoadTypologyCode;
+  /** Carga muerta adicional (tabiques, pisos, etc.) kN/m² */
+  deadLoadKnm2?: number;
+  /** Solo si `loadTypologyCode === 'CUSTOM'` */
+  liveLoadOverrideKnm2?: number;
+}
 
 export interface BaseEntity {
   id: string;
@@ -105,3 +116,4 @@ export const DEFAULT_DRAWING_STATE: DrawingState = {
 export const DEFAULT_COLUMN_SECTION = { widthM: 0.35, depthM: 0.35 };
 export const DEFAULT_BEAM_SECTION = { widthM: 0.25, depthM: 0.5 };
 export const DEFAULT_SLAB_THICKNESS = 0.2;
+export const DEFAULT_SLAB_DEAD_LOAD_KNM2 = 1.5;

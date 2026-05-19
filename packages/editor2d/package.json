@@ -6,11 +6,16 @@
   "exports": {
     ".": "./src/index.ts",
     "./migration": "./src/migration.ts",
-    "./derivedModel": "./src/derivedModel.ts"
+    "./derivedModel": "./src/derivedModel.ts",
+    "./geometry": "./src/geometry.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nodouno/calc": "workspace:*",
+    "@nodouno/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.2",

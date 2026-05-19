@@ -3,6 +3,7 @@ import {
   DEFAULT_COLUMN_SECTION,
   DEFAULT_DRAWING_STATE,
   DEFAULT_SLAB_THICKNESS,
+  DEFAULT_SLAB_DEAD_LOAD_KNM2,
   type BeamEntity,
   type CameraState,
   type ColumnEntity,
@@ -36,7 +37,14 @@ import { History } from './history';
 import { nextId } from './ids';
 import { render, type RenderProps } from './render';
 
-export type { DrawingState, ToolKind, Entity, EntityRef } from './types';
+export type {
+  DrawingState,
+  ToolKind,
+  Entity,
+  EntityRef,
+  SlabEntity,
+  SlabLoadProps
+} from './types';
 
 export interface HudInfo {
   cursor: { x: number; y: number } | null;
@@ -824,7 +832,7 @@ export function mountEditor2d(
       type: 'slab',
       points: slabDraft.points.map((p) => ({ x: round(p.x), y: round(p.y) })),
       thicknessM: slabThicknessM,
-      props: {}
+      props: { deadLoadKnm2: DEFAULT_SLAB_DEAD_LOAD_KNM2 }
     };
     state = {
       ...state,

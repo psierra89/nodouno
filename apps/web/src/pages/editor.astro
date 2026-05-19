@@ -232,11 +232,13 @@ import IconButton from '../components/IconButton.astro';
 
     <section id="step-panel-3" data-step-panel="3" class="hidden px-22 py-31">
       <div class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
-        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Modelo simplificado y cargas</h3>
+        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Cargas por losa (CIRSOC 101)</h3>
         <p class="mt-11 text-slate-mist">
-          Si el dibujo contiene una losa, sus dimensiones se usaran como luces. En caso contrario se utilizan los valores manuales.
+          Asigne tipología y carga muerta adicional por cada losa del dibujo. Luego prepare el modelo estructural para el cálculo.
         </p>
-        <form id="loads-form" class="mt-16 grid gap-11 sm:grid-cols-2">
+        <p id="step3-validation" class="mt-11 hidden rounded-3xl border border-desert-sienna bg-desert-sienna/10 px-16 py-13 text-body-sm text-desert-sienna" role="alert"></p>
+        <div id="slab-loads-list" class="mt-16 grid gap-11"></div>
+        <form id="loads-form" class="hidden mt-16 grid gap-11 sm:grid-cols-2">
           <label class="flex flex-col gap-11">
             <span class="font-bold">Luz X manual (m)</span>
             <input id="span-x" type="number" min="2" step="0.1" value="5" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
@@ -259,7 +261,7 @@ import IconButton from '../components/IconButton.astro';
           </label>
         </form>
         <div class="mt-16 flex flex-wrap gap-11">
-          <IconButton id="build-model-btn" variant="primary" icon="boxes" label="Generar modelo simplificado" />
+          <IconButton id="build-model-btn" variant="primary" icon="boxes" label="Preparar modelo estructural" />
         </div>
         <pre id="model-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
         <div class="mt-16">
@@ -327,16 +329,26 @@ import IconButton from '../components/IconButton.astro';
   <script>
     import { supabase } from '../lib/supabase';
     import { createSimplifiedModelViewer } from '../lib/modelViewer3d';
-    import { calculateDemands, calculateDesign, calculateLoads } from '@nodouno/calc';
+    import {
+      calculateDemands,
+      calculateDesign,
+      calculateLoads,
+      calculateUltimateSurfaceLoad,
+      normalizeBuildingInput
+    } from '@nodouno/calc';
     import type { BuildingInput } from '@nodouno/calc';
     import { mountEditor2d } from '@nodouno/editor2d';
-    import type { DrawingState, Editor2DHandle, HudInfo, ToolKind } from '@nodouno/editor2d';
+    import type { DrawingState, Editor2DHandle, HudInfo, SlabEntity, ToolKind } from '@nodouno/editor2d';
+    import { deriveBuildingModel } from '@nodouno/editor2d/derivedModel';
+    import { polygonArea } from '@nodouno/editor2d/geometry';
     import { migrateDrawingData, toLegacyFreeDrawing } from '@nodouno/editor2d/migration';
-    import { deriveSimplifiedModel } from '@nodouno/editor2d/derivedModel';
     import {
+      CIRSOC_101_LOAD_TYPOLOGIES,
       DEFAULT_PROJECT_SPECS,
       concreteStrengthMpa,
-      normalizeProjectSpecs
+      liveLoadForTypology,
+      normalizeProjectSpecs,
+      type LoadTypologyCode
     } from '@nodouno/shared';
     import { createTrpcClient, getPublicApiUrl } from '../lib/trpc';
 
@@ -354,7 +366,8 @@ import IconButton from '../components/IconButton.astro';
     const modelOutput = document.querySelector<HTMLElement>('#model-output');
     const calcOutput = document.querySelector<HTMLElement>('#calc-output');
     const model3dContainer = document.querySelector<HTMLElement>('#model-3d-container');
-    const loadsForm = document.querySelector<HTMLFormElement>('#loads-form');
+    const slabLoadsList = document.querySelector<HTMLElement>('#slab-loads-list');
+    const step3Validation = document.querySelector<HTMLElement>('#step3-validation');
     const helpToggle = document.querySelector<HTMLButtonElement>('#cad-help-toggle');
     const helpPanel = document.querySelector<HTMLElement>('#cad-help-panel');
     const saveDrawingBtn = document.querySelector<HTMLButtonElement>('#save-drawing-btn');
@@ -455,6 +468,9 @@ import IconButton from '../components/IconButton.astro';
       if (step === 2 && editor) {
         requestAnimationFrame(() => editor!.fit());
       }
+      if (step === 3) {
+        syncStep3SlabList();
+      }
     };
 
     stepPills.forEach((pill) => {
@@ -480,13 +496,202 @@ import IconButton from '../components/IconButton.astro';
       return supabase.from('projects').update(values).eq('id', activeProjectId);
     };
 
-    const parseLoadsInput = () => ({
-      spanX: Number(loadsForm?.querySelector<HTMLInputElement>('#span-x')?.value ?? '5') || 5,
-      spanY: Number(loadsForm?.querySelector<HTMLInputElement>('#span-y')?.value ?? '4') || 4,
-      thicknessM: Number(loadsForm?.querySelector<HTMLInputElement>('#slab-thickness')?.value ?? '0.2') || 0.2,
-      deadLoadKnm2: Number(loadsForm?.querySelector<HTMLInputElement>('#dead-load')?.value ?? '1.5') || 1.5,
-      liveLoadKnm2: Number(loadsForm?.querySelector<HTMLInputElement>('#live-load')?.value ?? '2') || 2
+    const DEFAULT_SLAB_DEAD = 1.5;
+
+    const readSlabProps = (slab: SlabEntity) => ({
+      loadTypologyCode: slab.props?.loadTypologyCode as LoadTypologyCode | undefined,
+      deadLoadKnm2:
+        typeof slab.props?.deadLoadKnm2 === 'number' ? slab.props.deadLoadKnm2 : DEFAULT_SLAB_DEAD,
+      liveLoadOverrideKnm2:
+        typeof slab.props?.liveLoadOverrideKnm2 === 'number'
+          ? slab.props.liveLoadOverrideKnm2
+          : undefined
     });
+
+    const patchSlabInDrawing = (
+      slabId: string,
+      updater: (slab: SlabEntity) => SlabEntity
+    ) => {
+      if (!editor) return;
+      const state = structuredClone(editor.getState());
+      const idx = state.entities.slabs.findIndex((s) => s.id === slabId);
+      if (idx < 0) return;
+      state.entities.slabs[idx] = updater(state.entities.slabs[idx]!);
+      editor.setState(state, { commit: true });
+      drawingDirty = true;
+    };
+
+    const slabPreviewLoads = (slab: SlabEntity) => {
+      const props = readSlabProps(slab);
+      const L = liveLoadForTypology(props.loadTypologyCode, props.liveLoadOverrideKnm2);
+      if (L === null) return null;
+      const D = slab.thicknessM * 24 + props.deadLoadKnm2;
+      const qu = calculateUltimateSurfaceLoad(slab.thicknessM, props.deadLoadKnm2, L);
+      return { D, L, qu };
+    };
+
+    const validateStep3 = (): string[] => {
+      const issues: string[] = [];
+      const state = editor?.getState();
+      if (!state || state.entities.slabs.length === 0) {
+        issues.push('Dibuje al menos una losa en el paso 2.');
+        return issues;
+      }
+      for (const slab of state.entities.slabs) {
+        const props = readSlabProps(slab);
+        if (!props.loadTypologyCode) {
+          issues.push(`Losa ${slab.id.slice(-4)}: seleccione tipología CIRSOC 101.`);
+        } else if (liveLoadForTypology(props.loadTypologyCode, props.liveLoadOverrideKnm2) === null) {
+          issues.push(`Losa ${slab.id.slice(-4)}: carga viva inválida (revise CUSTOM).`);
+        }
+      }
+      return issues;
+    };
+
+    const showStep3Validation = (messages: string[]) => {
+      if (!step3Validation) return;
+      if (messages.length === 0) {
+        step3Validation.classList.add('hidden');
+        step3Validation.textContent = '';
+        return;
+      }
+      step3Validation.classList.remove('hidden');
+      step3Validation.textContent = messages.join(' ');
+    };
+
+    const syncStep3SlabList = () => {
+      if (!slabLoadsList || !editor) return;
+      const slabs = editor.getState().entities.slabs;
+      slabLoadsList.innerHTML = '';
+      if (slabs.length === 0) {
+        slabLoadsList.innerHTML =
+          '<p class="text-slate-mist">No hay losas en el dibujo. Vuelva al paso 2 y dibuje al menos una losa.</p>';
+        showStep3Validation(['Dibuje al menos una losa en el paso 2.']);
+        return;
+      }
+      showStep3Validation(validateStep3());
+
+      for (const slab of slabs) {
+        const props = readSlabProps(slab);
+        const area = polygonArea(slab.points);
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (const p of slab.points) {
+          if (p.x < minX) minX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y > maxY) maxY = p.y;
+        }
+        const spanX = Math.max(0.1, maxX - minX);
+        const spanY = Math.max(0.1, maxY - minY);
+        const preview = slabPreviewLoads(slab);
+
+        const card = document.createElement('article');
+        card.className = 'rounded-3xl border border-obsidian/40 p-16 grid gap-11 sm:grid-cols-2';
+        card.dataset.slabId = slab.id;
+
+        const title = document.createElement('h4');
+        title.className = 'text-body-sm font-bold sm:col-span-2';
+        title.textContent = `Losa ${slab.id.slice(-4)} · ${area.toFixed(2)} m² · luces ${spanX.toFixed(2)}×${spanY.toFixed(2)} m`;
+        card.appendChild(title);
+
+        const typologyLabel = document.createElement('label');
+        typologyLabel.className = 'grid gap-8';
+        typologyLabel.innerHTML = '<span class="text-body-sm font-bold">Tipología CIRSOC 101</span>';
+        const typologySelect = document.createElement('select');
+        typologySelect.className = 'cad-input';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '— Seleccionar —';
+        typologySelect.appendChild(emptyOpt);
+        for (const t of CIRSOC_101_LOAD_TYPOLOGIES) {
+          const opt = document.createElement('option');
+          opt.value = t.code;
+          opt.textContent = `${t.label} (L=${t.liveLoadKnm2 ?? 'manual'} kN/m²)`;
+          typologySelect.appendChild(opt);
+        }
+        typologySelect.value = props.loadTypologyCode ?? '';
+        typologySelect.addEventListener('change', () => {
+          const code = typologySelect.value as LoadTypologyCode | '';
+          patchSlabInDrawing(slab.id, (s) => ({
+            ...s,
+            props: { ...s.props, loadTypologyCode: code || undefined }
+          }));
+          syncStep3SlabList();
+        });
+        typologyLabel.appendChild(typologySelect);
+        card.appendChild(typologyLabel);
+
+        const deadLabel = document.createElement('label');
+        deadLabel.className = 'grid gap-8';
+        deadLabel.innerHTML = '<span class="text-body-sm font-bold">Muerta adicional (kN/m²)</span>';
+        const deadInput = document.createElement('input');
+        deadInput.type = 'number';
+        deadInput.min = '0';
+        deadInput.step = '0.1';
+        deadInput.className = 'cad-input';
+        deadInput.value = String(props.deadLoadKnm2);
+        deadInput.addEventListener('change', () => {
+          patchSlabInDrawing(slab.id, (s) => ({
+            ...s,
+            props: { ...s.props, deadLoadKnm2: Number(deadInput.value) || DEFAULT_SLAB_DEAD }
+          }));
+          syncStep3SlabList();
+        });
+        deadLabel.appendChild(deadInput);
+        card.appendChild(deadLabel);
+
+        const thicknessLabel = document.createElement('label');
+        thicknessLabel.className = 'grid gap-8';
+        thicknessLabel.innerHTML = '<span class="text-body-sm font-bold">Espesor (m)</span>';
+        const thicknessInput = document.createElement('input');
+        thicknessInput.type = 'number';
+        thicknessInput.min = '0.05';
+        thicknessInput.step = '0.01';
+        thicknessInput.className = 'cad-input';
+        thicknessInput.value = String(slab.thicknessM);
+        thicknessInput.addEventListener('change', () => {
+          const t = Number(thicknessInput.value);
+          if (!Number.isFinite(t) || t <= 0) return;
+          patchSlabInDrawing(slab.id, (s) => ({ ...s, thicknessM: t }));
+          syncStep3SlabList();
+        });
+        thicknessLabel.appendChild(thicknessInput);
+        card.appendChild(thicknessLabel);
+
+        const liveOverrideWrap = document.createElement('label');
+        liveOverrideWrap.className = `grid gap-8 ${props.loadTypologyCode === 'CUSTOM' ? '' : 'hidden'}`;
+        liveOverrideWrap.innerHTML = '<span class="text-body-sm font-bold">L viva manual (kN/m²)</span>';
+        const liveOverrideInput = document.createElement('input');
+        liveOverrideInput.type = 'number';
+        liveOverrideInput.min = '0';
+        liveOverrideInput.step = '0.1';
+        liveOverrideInput.className = 'cad-input';
+        liveOverrideInput.value = String(props.liveLoadOverrideKnm2 ?? '');
+        liveOverrideInput.addEventListener('change', () => {
+          patchSlabInDrawing(slab.id, (s) => ({
+            ...s,
+            props: { ...s.props, liveLoadOverrideKnm2: Number(liveOverrideInput.value) }
+          }));
+          syncStep3SlabList();
+        });
+        liveOverrideWrap.appendChild(liveOverrideInput);
+        card.appendChild(liveOverrideWrap);
+
+        const previewEl = document.createElement('p');
+        previewEl.className = 'text-body-sm text-slate-mist sm:col-span-2 tabular-nums';
+        if (preview) {
+          previewEl.textContent = `Vista previa: D=${preview.D.toFixed(2)} · L=${preview.L.toFixed(2)} · qu=${preview.qu.toFixed(2)} kN/m²`;
+        } else {
+          previewEl.textContent = 'Complete tipología para ver D, L y qu.';
+        }
+        card.appendChild(previewEl);
+
+        slabLoadsList.appendChild(card);
+      }
+    };
 
     const updateActiveToolButton = (tool: ToolKind) => {
       toolButtons.forEach((btn) => {
@@ -682,15 +887,71 @@ import IconButton from '../components/IconButton.astro';
             editor!.updateSelectionProps((e) => (e.type === 'beam' ? { ...e, y2: v } : e))
           )
         );
-      } else {
+      } else if (entity.type === 'slab') {
+        const slabProps = readSlabProps(entity);
         propSelectionFields.appendChild(
           numberInput('Espesor (m)', entity.thicknessM, 0.01, (v) =>
             editor!.updateSelectionProps((e) => (e.type === 'slab' ? { ...e, thicknessM: v } : e))
           )
         );
+        const typologyLabel = document.createElement('label');
+        typologyLabel.className = 'grid gap-8';
+        typologyLabel.innerHTML = '<span class="text-body-sm font-bold">Tipología CIRSOC 101</span>';
+        const typologySelect = document.createElement('select');
+        typologySelect.className = 'cad-input';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '— Seleccionar —';
+        typologySelect.appendChild(emptyOpt);
+        for (const t of CIRSOC_101_LOAD_TYPOLOGIES) {
+          const opt = document.createElement('option');
+          opt.value = t.code;
+          opt.textContent = t.label;
+          typologySelect.appendChild(opt);
+        }
+        typologySelect.value = slabProps.loadTypologyCode ?? '';
+        typologySelect.addEventListener('change', () => {
+          const code = typologySelect.value as LoadTypologyCode | '';
+          editor!.updateSelectionProps((e) =>
+            e.type === 'slab'
+              ? { ...e, props: { ...e.props, loadTypologyCode: code || undefined } }
+              : e
+          );
+          renderPropertiesPanel('select');
+        });
+        typologyLabel.appendChild(typologySelect);
+        propSelectionFields.appendChild(typologyLabel);
+
+        propSelectionFields.appendChild(
+          numberInput('Muerta adicional (kN/m²)', slabProps.deadLoadKnm2, 0.1, (v) =>
+            editor!.updateSelectionProps((e) =>
+              e.type === 'slab' ? { ...e, props: { ...e.props, deadLoadKnm2: v } } : e
+            )
+          )
+        );
+
+        const livePreview = document.createElement('p');
+        livePreview.className = 'text-slate-mist tabular-nums';
+        const L = liveLoadForTypology(slabProps.loadTypologyCode, slabProps.liveLoadOverrideKnm2);
+        livePreview.textContent =
+          L !== null ? `Carga viva L = ${L.toFixed(2)} kN/m²` : 'Seleccione tipología para ver L.';
+
+        if (slabProps.loadTypologyCode === 'CUSTOM') {
+          propSelectionFields.appendChild(
+            numberInput('L viva manual (kN/m²)', slabProps.liveLoadOverrideKnm2 ?? 2, 0.1, (v) =>
+              editor!.updateSelectionProps((e) =>
+                e.type === 'slab'
+                  ? { ...e, props: { ...e.props, liveLoadOverrideKnm2: v } }
+                  : e
+              )
+            )
+          );
+        }
+        propSelectionFields.appendChild(livePreview);
+
         const info = document.createElement('p');
         info.className = 'text-slate-mist';
-        info.textContent = `Vertices: ${entity.points.length}`;
+        info.textContent = `Vértices: ${entity.points.length} · Área: ${formatArea(polygonArea(entity.points))}`;
         propSelectionFields.appendChild(info);
       }
     };
@@ -765,7 +1026,7 @@ import IconButton from '../components/IconButton.astro';
         initialDrawing = migrateDrawingData(projectData.drawing_data);
       }
       if (projectData?.simplified_model) {
-        simplifiedModel = projectData.simplified_model as BuildingInput;
+        simplifiedModel = normalizeBuildingInput(projectData.simplified_model);
         if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
       }
       if (projectData?.calculations || projectData?.dimensioning) {
@@ -784,6 +1045,7 @@ import IconButton from '../components/IconButton.astro';
         onChange: () => {
           drawingDirty = true;
           renderPropertiesPanel();
+          if (currentStep === 3) syncStep3SlabList();
         },
         onHud: (hud) => {
           renderHud(hud);
@@ -904,25 +1166,25 @@ import IconButton from '../components/IconButton.astro';
     });
 
     buildModelBtn?.addEventListener('click', async () => {
-      const fallback = parseLoadsInput();
-      const state = editor?.getState();
-      simplifiedModel = state ? deriveSimplifiedModel(state, fallback) : ({
-        slab: {
-          spanM: Math.max(fallback.spanX, fallback.spanY),
-          thicknessM: fallback.thicknessM,
-          deadLoadKnm2: fallback.deadLoadKnm2,
-          liveLoadKnm2: fallback.liveLoadKnm2
-        },
-        beams: [],
-        columns: [],
-        materials: { fckMpa: 25, fyMpa: 420, phiFlexion: 0.9, phiShear: 0.75 }
-      } as BuildingInput);
-
-      const materials = simplifiedModel?.materials;
-      if (materials && typeof materials === 'object') {
-        materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
-        materials.fyMpa = 420;
+      const issues = validateStep3();
+      showStep3Validation(issues);
+      if (issues.length > 0) {
+        setEditorStatus('Complete las tipologías de todas las losas antes de preparar el modelo.', true);
+        return;
       }
+      const state = editor?.getState();
+      if (!state) return;
+      const derived = deriveBuildingModel(state);
+      if ('error' in derived) {
+        setEditorStatus(derived.error, true);
+        return;
+      }
+      simplifiedModel = derived.model;
+      if (derived.warnings.length > 0) {
+        showStep3Validation(derived.warnings);
+      }
+      simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
+      simplifiedModel.materials.fyMpa = 420;
 
       if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
       sync3dViewer();
@@ -931,21 +1193,22 @@ import IconButton from '../components/IconButton.astro';
         status: 'loaded'
       });
       if (error) {
-        setEditorStatus(`Modelo simplificado generado, pero no se pudo guardar: ${error.message}`, true);
+        setEditorStatus(`Modelo generado, pero no se pudo guardar: ${error.message}`, true);
         return;
       }
-      setEditorStatus('Modelo simplificado guardado.');
+      setEditorStatus('Modelo estructural preparado y guardado.');
     });
 
     runCalcBtn?.addEventListener('click', async () => {
       if (!simplifiedModel) {
-        setEditorStatus('Primero confirma el modelo simplificado en el paso 3.', true);
+        setEditorStatus('Primero prepare el modelo estructural en el paso 3.', true);
         return;
       }
+      const model = normalizeBuildingInput(simplifiedModel);
       setEditorStatus('Ejecutando calculo y dimensionamiento...');
-      const loads = calculateLoads(simplifiedModel);
-      const demands = calculateDemands(simplifiedModel);
-      const design = calculateDesign(simplifiedModel);
+      const loads = calculateLoads(model);
+      const demands = calculateDemands(model);
+      const design = calculateDesign(model);
       lastResults = {
         calculations: { loads, demands },
         dimensioning: design
@@ -987,11 +1250,21 @@ import IconButton from '../components/IconButton.astro';
         };
         await persistProject({ drawing_data: payload, status: 'drawn' });
       }
-      if (currentStep === 3 && !simplifiedModel) {
-        const fallback = parseLoadsInput();
-        const state = editor?.getState();
-        if (state) {
-          simplifiedModel = deriveSimplifiedModel(state, fallback) as BuildingInput;
+      if (currentStep === 3) {
+        const issues = validateStep3();
+        if (issues.length > 0) {
+          showStep3Validation(issues);
+          setEditorStatus('Complete las cargas por losa antes de avanzar.', true);
+          return;
+        }
+        if (!simplifiedModel && editor) {
+          const derived = deriveBuildingModel(editor.getState());
+          if ('error' in derived) {
+            setEditorStatus(derived.error, true);
+            return;
+          }
+          simplifiedModel = derived.model;
+          simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
           if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
           await persistProject({ simplified_model: simplifiedModel, status: 'loaded' });
           sync3dViewer();

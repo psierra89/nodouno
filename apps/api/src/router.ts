@@ -1,7 +1,12 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { z } from 'zod';
-import { calculateDemands, calculateDesign, calculateLoads } from '@nodouno/calc';
+import {
+  calculateDemands,
+  calculateDesign,
+  calculateLoads,
+  normalizeBuildingInput
+} from '@nodouno/calc';
 import {
   normalizeProjectSpecs,
   normalizeProjectStatus,
@@ -247,7 +252,7 @@ export const appRouter = t.router({
       .use(requireUser)
       .input(z.object({ simplifiedModel: z.unknown() }))
       .mutation(({ input }) => {
-        const model = input.simplifiedModel as Parameters<typeof calculateLoads>[0];
+        const model = normalizeBuildingInput(input.simplifiedModel);
         const loads = calculateLoads(model);
         const demands = calculateDemands(model);
         const dimensioning = calculateDesign(model);

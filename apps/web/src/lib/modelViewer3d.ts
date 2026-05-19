@@ -1,34 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+import { normalizeBuildingInput } from '@nodouno/calc';
 import type { BeamInput, BuildingInput, ColumnInput, SlabInput } from '@nodouno/calc';
 
 const STORY_HEIGHT_M = 3;
 
-function isBuildingShape(model: unknown): model is BuildingInput {
-  if (!model || typeof model !== 'object') return false;
-  const m = model as Record<string, unknown>;
-  return (
-    m.slab != null &&
-    Array.isArray(m.beams) &&
-    Array.isArray(m.columns) &&
-    m.materials != null
-  );
-}
-
-function getSpansFromModel(model: BuildingInput): { spanX: number; spanY: number } {
-  const beams = model.beams;
-  const slabSpan = model.slab.spanM;
-  if (beams.length >= 4) {
-    return {
-      spanX: beams[0]?.spanM ?? slabSpan,
-      spanY: beams[2]?.spanM ?? beams[1]?.spanM ?? slabSpan
-    };
-  }
-  const maxBeam = beams.length ? Math.max(...beams.map((b) => b.spanM)) : 0;
-  const s = Math.max(maxBeam, slabSpan, 1);
-  return { spanX: s, spanY: s };
-}
+const SLAB_COLORS = [0xc8c8d0, 0xb8d4e8, 0xd4c8b8, 0xc8d8c8, 0xe0c8d8, 0xd8e0c8];
 
 function disposeMesh(mesh: THREE.Mesh) {
   mesh.geometry.dispose();
@@ -45,13 +23,52 @@ function makeLabel(text: string): CSS2DObject {
   return new CSS2DObject(div);
 }
 
+function getModelBounds(model: BuildingInput): {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+} {
+  let minX = 0;
+  let maxX = 0;
+  let minZ = 0;
+  let maxZ = 0;
+  if (model.slabs.length > 0) {
+    minX = Infinity;
+    minZ = Infinity;
+    maxX = -Infinity;
+    maxZ = -Infinity;
+    for (const slab of model.slabs) {
+      const hx = slab.spanXm / 2;
+      const hz = slab.spanYm / 2;
+      minX = Math.min(minX, -hx);
+      maxX = Math.max(maxX, hx);
+      minZ = Math.min(minZ, -hz);
+      maxZ = Math.max(maxZ, hz);
+    }
+  } else if (model.beams.length >= 4) {
+    const spanX = model.beams[0]?.spanM ?? 5;
+    const spanY = model.beams[2]?.spanM ?? model.beams[1]?.spanM ?? 4;
+    minX = -spanX / 2;
+    maxX = spanX / 2;
+    minZ = -spanY / 2;
+    maxZ = spanY / 2;
+  } else {
+    minX = -2.5;
+    maxX = 2.5;
+    minZ = -2;
+    maxZ = 2;
+  }
+  return { minX, maxX, minZ, maxZ };
+}
+
 export type ModelViewerHandle = {
   dispose: () => void;
   setModel: (model: BuildingInput | Record<string, unknown> | null) => void;
 };
 
 /**
- * Vista 3D MVP del `simplified_model` fijo: losa, vigas perimetrales y columnas esquineras.
+ * Vista 3D del modelo estructural: N losas (bbox), vigas y columnas.
  */
 export function createSimplifiedModelViewer(
   container: HTMLElement,
@@ -105,32 +122,41 @@ export function createSimplifiedModelViewer(
 
   const buildFromModel = (model: BuildingInput) => {
     clearRoot();
-    const { spanX, spanY } = getSpansFromModel(model);
-    const slab = model.slab as SlabInput;
+    const bounds = getModelBounds(model);
+    const cx = (bounds.minX + bounds.maxX) / 2;
+    const cz = (bounds.minZ + bounds.maxZ) / 2;
     const columns = model.columns as ColumnInput[];
     const beams = model.beams as BeamInput[];
-
-    const thickness = Math.max(0.05, slab.thicknessM);
     const colH = Math.max(STORY_HEIGHT_M, (columns[0]?.floors ?? 2) * STORY_HEIGHT_M);
 
-    const hx = spanX / 2;
-    const hz = spanY / 2;
+    model.slabs.forEach((slab: SlabInput, idx) => {
+      const thickness = Math.max(0.05, slab.thicknessM);
+      const geom = new THREE.BoxGeometry(slab.spanXm, thickness, slab.spanYm);
+      const color = SLAB_COLORS[idx % SLAB_COLORS.length]!;
+      const mat = new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.75,
+        metalness: 0.05,
+        transparent: true,
+        opacity: 0.92
+      });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.set(cx, colH + thickness / 2, cz);
+      root.add(mesh);
 
-    const slabGeom = new THREE.BoxGeometry(spanX, thickness, spanY);
-    const slabMat = new THREE.MeshStandardMaterial({ color: 0xc8c8d0, roughness: 0.75, metalness: 0.05 });
-    const slabMesh = new THREE.Mesh(slabGeom, slabMat);
-    slabMesh.position.set(0, colH + thickness / 2, 0);
-    root.add(slabMesh);
+      const tag = makeLabel(`Losa ${slab.id.slice(-4)}`);
+      tag.position.set(cx, colH + thickness + 0.35 + idx * 0.15, cz);
+      root.add(tag);
+    });
 
-    const slabTag = makeLabel('Losa');
-    slabTag.position.set(0, colH + thickness + 0.4, 0);
-    root.add(slabTag);
+    const hx = (bounds.maxX - bounds.minX) / 2;
+    const hz = (bounds.maxZ - bounds.minZ) / 2;
 
     const corners: Array<[number, number]> = [
-      [-hx, -hz],
-      [hx, -hz],
-      [hx, hz],
-      [-hx, hz]
+      [bounds.minX, bounds.minZ],
+      [bounds.maxX, bounds.minZ],
+      [bounds.maxX, bounds.maxZ],
+      [bounds.minX, bounds.maxZ]
     ];
 
     columns.slice(0, 4).forEach((col, i) => {
@@ -139,17 +165,19 @@ export function createSimplifiedModelViewer(
       const geom = new THREE.BoxGeometry(w, colH, d);
       const mat = new THREE.MeshStandardMaterial({ color: 0xbc7155, roughness: 0.7, metalness: 0.05 });
       const mesh = new THREE.Mesh(geom, mat);
-      const [cx, cz] = corners[i] ?? corners[0];
-      mesh.position.set(cx, colH / 2, cz);
+      const [px, pz] = corners[i] ?? corners[0]!;
+      mesh.position.set(px, colH / 2, pz);
       root.add(mesh);
 
       const tag = makeLabel(`Col ${i + 1}`);
-      tag.position.set(cx, colH + 0.35, cz);
+      tag.position.set(px, colH + 0.35, pz);
       root.add(tag);
     });
 
+    const spanX = bounds.maxX - bounds.minX;
+    const spanY = bounds.maxZ - bounds.minZ;
     const beamMat = new THREE.MeshStandardMaterial({ color: 0x1a2528, roughness: 0.65, metalness: 0.08 });
-    /** Vigas perimetrales: dos horizontales en X (z fijo) y dos en Z (x fijo). */
+
     const beamLayouts: Array<{
       cx: number;
       cz: number;
@@ -157,54 +185,54 @@ export function createSimplifiedModelViewer(
       build: (b: BeamInput | undefined) => THREE.Mesh;
     }> = [
       {
-        cx: 0,
-        cz: -hz,
+        cx,
+        cz: bounds.minZ,
         label: 'Viga 1',
         build: (b) => {
           const depth = Math.max(0.12, b?.depthM ?? 0.5);
           const zm = Math.max(0.12, b?.widthM ?? 0.25);
           const geom = new THREE.BoxGeometry(spanX, depth, zm);
           const mesh = new THREE.Mesh(geom, beamMat);
-          mesh.position.set(0, colH - depth / 2, -hz);
+          mesh.position.set(cx, colH - depth / 2, bounds.minZ);
           return mesh;
         }
       },
       {
-        cx: 0,
-        cz: hz,
+        cx,
+        cz: bounds.maxZ,
         label: 'Viga 2',
         build: (b) => {
           const depth = Math.max(0.12, b?.depthM ?? 0.5);
           const zm = Math.max(0.12, b?.widthM ?? 0.25);
           const geom = new THREE.BoxGeometry(spanX, depth, zm);
           const mesh = new THREE.Mesh(geom, beamMat);
-          mesh.position.set(0, colH - depth / 2, hz);
+          mesh.position.set(cx, colH - depth / 2, bounds.maxZ);
           return mesh;
         }
       },
       {
-        cx: -hx,
-        cz: 0,
+        cx: bounds.minX,
+        cz,
         label: 'Viga 3',
         build: (b) => {
           const depth = Math.max(0.12, b?.depthM ?? 0.5);
           const xm = Math.max(0.12, b?.widthM ?? 0.25);
           const geom = new THREE.BoxGeometry(xm, depth, spanY);
           const mesh = new THREE.Mesh(geom, beamMat);
-          mesh.position.set(-hx, colH - depth / 2, 0);
+          mesh.position.set(bounds.minX, colH - depth / 2, cz);
           return mesh;
         }
       },
       {
-        cx: hx,
-        cz: 0,
+        cx: bounds.maxX,
+        cz,
         label: 'Viga 4',
         build: (b) => {
           const depth = Math.max(0.12, b?.depthM ?? 0.5);
           const xm = Math.max(0.12, b?.widthM ?? 0.25);
           const geom = new THREE.BoxGeometry(xm, depth, spanY);
           const mesh = new THREE.Mesh(geom, beamMat);
-          mesh.position.set(hx, colH - depth / 2, 0);
+          mesh.position.set(bounds.maxX, colH - depth / 2, cz);
           return mesh;
         }
       }
@@ -222,11 +250,16 @@ export function createSimplifiedModelViewer(
   };
 
   const setModel = (model: BuildingInput | Record<string, unknown> | null) => {
-    if (!model || !isBuildingShape(model)) {
+    if (!model) {
       clearRoot();
       return;
     }
-    buildFromModel(model);
+    const normalized = normalizeBuildingInput(model);
+    if (normalized.slabs.length === 0 && normalized.beams.length === 0) {
+      clearRoot();
+      return;
+    }
+    buildFromModel(normalized);
   };
 
   setModel(initialModel);

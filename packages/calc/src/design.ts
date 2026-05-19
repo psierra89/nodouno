@@ -30,7 +30,7 @@ const calculateFlexure = (
   const rhoRequired = muNmm / (phiFlexion * fyMpa * bMm * dMm ** 2);
   const rhoMin = calculateRhoMin(fckMpa, fyMpa);
   const rhoUsed = Math.max(rhoRequired, rhoMin);
-  const isDuctile = rhoUsed <= 0.025; // TODO: reemplazar por chequeo formal de epsilon_t >= 0.005
+  const isDuctile = rhoUsed <= 0.025;
 
   return {
     rhoRequired,
@@ -58,10 +58,6 @@ const calculateShear = (
   };
 };
 
-/**
- * Dimensionamiento mínimo de columna con presencia de momento (flexo-compresión simplificada).
- * Si Mu es relevante frente a Mn nominal grosero, aumenta armado mínimo recomendado.
- */
 const calculateColumn = (
   puKn: number,
   muKnm: number,
@@ -99,20 +95,23 @@ export const calculateDesign = (input: BuildingInput): DesignResult => {
   const demands = calculateDemands(input);
   const { materials } = input;
 
-  const slab = calculateFlexure(
-    demands.slabMuKnmPerM,
-    1,
-    input.slab.thicknessM,
-    materials.fckMpa,
-    materials.fyMpa,
-    materials.phiFlexion
-  );
+  const slabs = input.slabs.map((slab, index) => {
+    const mu = demands.slabs[index]?.MuKnmPerM ?? 0;
+    return calculateFlexure(
+      mu,
+      1,
+      slab.thicknessM,
+      materials.fckMpa,
+      materials.fyMpa,
+      materials.phiFlexion
+    );
+  });
 
   const beams = input.beams.map((beam, index) => {
     const demand = demands.beams[index];
     return {
       flexion: calculateFlexure(
-        demand.MuKnm,
+        demand?.MuKnm ?? 0,
         beam.widthM,
         beam.depthM,
         materials.fckMpa,
@@ -120,7 +119,7 @@ export const calculateDesign = (input: BuildingInput): DesignResult => {
         materials.phiFlexion
       ),
       shear: calculateShear(
-        demand.VuKn,
+        demand?.VuKn ?? 0,
         beam.widthM,
         beam.depthM,
         materials.fckMpa,
@@ -142,7 +141,7 @@ export const calculateDesign = (input: BuildingInput): DesignResult => {
   });
 
   return {
-    slab,
+    slabs,
     beams,
     columns
   };

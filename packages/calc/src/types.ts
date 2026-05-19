@@ -6,17 +6,27 @@ export interface MaterialProps {
 }
 
 export interface SlabInput {
-  spanM: number;
+  id: string;
+  spanXm: number;
+  spanYm: number;
+  areaM2: number;
   thicknessM: number;
   deadLoadKnm2: number;
   liveLoadKnm2: number;
+  loadTypologyCode: string;
+}
+
+export interface BeamSlabContribution {
+  slabId: string;
+  tributaryWidthM: number;
 }
 
 export interface BeamInput {
+  id?: string;
   spanM: number;
   widthM: number;
   depthM: number;
-  tributaryWidthM: number;
+  slabContributions: BeamSlabContribution[];
   selfWeightKnm?: number;
 }
 
@@ -30,22 +40,32 @@ export interface ColumnInput {
 }
 
 export interface BuildingInput {
-  slab: SlabInput;
+  slabs: SlabInput[];
   beams: BeamInput[];
   columns: ColumnInput[];
   materials: MaterialProps;
 }
 
+export interface SlabLoadBreakdown {
+  id: string;
+  D: number;
+  L: number;
+  qu: number;
+}
+
 export interface LoadResult {
-  slabDkNm2: number;
-  slabLkNm2: number;
-  slabUltimateQkNm2: number;
+  slabs: SlabLoadBreakdown[];
   beamLineLoadsKnm: number[];
   columnAxialLoadsKn: number[];
 }
 
+export interface SlabDemandBreakdown {
+  id: string;
+  MuKnmPerM: number;
+}
+
 export interface DemandResult {
-  slabMuKnmPerM: number;
+  slabs: SlabDemandBreakdown[];
   beams: Array<{
     MuKnm: number;
     VuKn: number;
@@ -77,7 +97,7 @@ export interface ColumnDesignResult {
 }
 
 export interface DesignResult {
-  slab: FlexureDesignResult;
+  slabs: FlexureDesignResult[];
   beams: Array<{
     flexion: FlexureDesignResult;
     shear: ShearDesignResult;

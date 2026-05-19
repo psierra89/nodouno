@@ -3,7 +3,7 @@ import { panByPixels, screenToWorld, worldToScreen, zoomAtCursor } from './camer
 import { computeSnap, snapToGrid } from './snap';
 import { History } from './history';
 import { migrateDrawingData, toLegacyFreeDrawing } from './migration';
-import { deriveSimplifiedModel } from './derivedModel';
+import { deriveBuildingModel, deriveSimplifiedModel } from './derivedModel';
 import { entityBoundingBox, hitTest, polygonArea, translateEntity } from './geometry';
 import type { CameraState, DrawingState } from './types';
 
@@ -213,7 +213,69 @@ describe('migration', () => {
   });
 });
 
-describe('derivedModel', () => {
+describe('deriveBuildingModel', () => {
+  it('deriva dos losas con tipologías distintas y tributarios por viga', () => {
+    const state: DrawingState = {
+      version: 4,
+      createdAt: '',
+      grid: { sizeM: 0.1, snapEnabled: true, orthoEnabled: false },
+      entities: {
+        columns: [],
+        beams: [
+          {
+            id: 'b-mid',
+            type: 'beam',
+            x1: 3,
+            y1: 2,
+            x2: 3,
+            y2: 5,
+            widthM: 0.25,
+            depthM: 0.5,
+            props: {}
+          }
+        ],
+        slabs: [
+          {
+            id: 's-res',
+            type: 'slab',
+            points: [
+              { x: 0, y: 0 },
+              { x: 6, y: 0 },
+              { x: 6, y: 4 },
+              { x: 0, y: 4 }
+            ],
+            thicknessM: 0.2,
+            props: { loadTypologyCode: 'RES_1_2_FAM', deadLoadKnm2: 1.5 }
+          },
+          {
+            id: 's-off',
+            type: 'slab',
+            points: [
+              { x: 6, y: 0 },
+              { x: 10, y: 0 },
+              { x: 10, y: 4 },
+              { x: 6, y: 4 }
+            ],
+            thicknessM: 0.2,
+            props: { loadTypologyCode: 'OFFICE', deadLoadKnm2: 1.5 }
+          }
+        ]
+      }
+    };
+    const out = deriveBuildingModel(state);
+    expect('error' in out).toBe(false);
+    if ('error' in out) return;
+    expect(out.model.slabs).toHaveLength(2);
+    expect(out.model.slabs[0]?.liveLoadKnm2).toBe(2);
+    expect(out.model.slabs[1]?.liveLoadKnm2).toBe(2.5);
+    const midBeam = out.model.beams.find((b) => b.id === 'b-mid');
+    expect(midBeam?.slabContributions.length).toBeGreaterThanOrEqual(1);
+    const widths = midBeam?.slabContributions.map((c) => c.tributaryWidthM) ?? [];
+    expect(new Set(widths).size).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('derivedModel (legacy)', () => {
   it('deriva luces desde la mayor losa dibujada', () => {
     const state: DrawingState = {
       version: 4,
@@ -248,8 +310,8 @@ describe('derivedModel', () => {
     expect(out.source).toBe('derived_from_drawing');
     expect(out.beams[0].spanM).toBeCloseTo(6, 5);
     expect(out.beams[2].spanM).toBeCloseTo(4, 5);
-    expect(out.slab.spanM).toBeCloseTo(6, 5);
-    expect(out.slab.thicknessM).toBeCloseTo(0.18, 5);
+    expect(out.slabs[0]?.spanXm).toBeCloseTo(6, 5);
+    expect(out.slabs[0]?.thicknessM).toBeCloseTo(0.18, 5);
   });
 
   it('usa fallback cuando no hay losas', () => {
