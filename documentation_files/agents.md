@@ -110,4 +110,15 @@ az webapp deploy \
 - Faltaba columna `projects.specs` en Supabase → migración `supabase/migrations/20260519100000_add_project_specs.sql`.
 - Cliente web tRPC v11: `transformer: superjson` va en `httpLink`, no en la raíz de `createTRPCProxyClient`; usar `httpLink` (no `httpBatchLink`) en Azure.
 
-**Arreglar CI:** Azure Portal → App Service → *Download publish profile* → GitHub → Settings → Secrets → actualizar `AZUREAPPSERVICE_PUBLISHPROFILE_NODOUNO_API`.
+**Arreglar CI (publish profile):**
+
+Si el portal muestra *"La autenticación básica está deshabilitada"* al descargar el perfil:
+
+1. Azure Portal → **nodouno-api-psierra89** → **Configuration** → **General settings**
+2. Activar **SCM Basic Auth Publishing Credentials** = **On** (y guardar)
+3. Volver a **Overview** → **Download publish profile** (`.PublishSettings`)
+4. GitHub → repo → **Settings** → **Secrets** → `AZUREAPPSERVICE_PUBLISHPROFILE_NODOUNO_API` → pegar **todo** el XML del archivo
+
+> Por seguridad, Azure desactiva la auth básica por defecto en apps nuevas. Solo hace falta activarla si usas el secret de publish profile en GitHub Actions. El deploy manual con `az webapp deploy` (arriba) **no** requiere el perfil.
+
+**Alternativa más segura (sin auth básica):** migrar el workflow a **OIDC** con `azure/login@v2` + App Registration en Entra ID (ver [Deploy to Azure App Service](https://learn.microsoft.com/azure/app-service/deploy-github-actions)). Mientras tanto, `az webapp deploy` desde tu máquina con `az login` sigue siendo válido.
