@@ -299,7 +299,8 @@ import IconButton from '../components/IconButton.astro';
           </div>
           <div
             id="model-3d-container"
-            class="relative min-h-[320px] flex-1 overflow-hidden rounded-3xl border border-obsidian bg-[#f8f8f8]"
+            class="relative w-full overflow-hidden rounded-3xl border border-obsidian bg-[#f8f8f8]"
+            style="height: min(45vh, 420px); min-height: 280px;"
           ></div>
         </div>
         <aside class="flex flex-col gap-11 overflow-y-auto bg-canvas-white p-22" aria-label="Panel tecnico">
@@ -500,38 +501,12 @@ import IconButton from '../components/IconButton.astro';
       if (specConcrete) specConcrete.value = projectSpecs.concrete;
     };
 
-    const setStep = (step: 1 | 2 | 3 | 4) => {
-      currentStep = step;
-      stepPanels.forEach((panel) => {
-        const panelStep = Number(panel.getAttribute('data-step-panel'));
-        panel.classList.toggle('hidden', panelStep !== currentStep);
-      });
-      stepPills.forEach((pill) => {
-        const pillStep = Number(pill.getAttribute('data-step-pill'));
-        const isActive = pillStep === currentStep;
-        pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      });
-      if (nextStepBtn) {
-        const label = currentStep === 4 ? 'Flujo completado' : 'Paso siguiente';
-        nextStepBtn.setAttribute('aria-label', label);
-        nextStepBtn.setAttribute('title', label);
-        nextStepBtn.toggleAttribute('disabled', currentStep === 4);
-      }
-      if (step === 2 && editor) {
-        requestAnimationFrame(() => editor!.fit());
-      }
-      if (step === 3) {
-        enterStep3();
-      }
-      if (step === 4) {
-        enterStep4();
-      }
-    };
+    let setStep: (step: 1 | 2 | 3 | 4) => Promise<void>;
 
     stepPills.forEach((pill) => {
       pill.addEventListener('click', () => {
         const step = Number(pill.getAttribute('data-step-pill')) as 1 | 2 | 3 | 4;
-        if (step === 1 || step === 2 || step === 3 || step === 4) setStep(step);
+        if (step === 1 || step === 2 || step === 3 || step === 4) void setStep(step);
       });
     });
 
@@ -569,6 +544,49 @@ import IconButton from '../components/IconButton.astro';
       return persistProjectViaSupabase(values);
     };
 
+    let persistDrawingTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const persistDrawingFromEditor = async () => {
+      if (!editor || !activeProjectId) return;
+      const state = editor.getState();
+      const payload = {
+        ...state,
+        createdAt: new Date().toISOString(),
+        freeDrawing: toLegacyFreeDrawing(state)
+      };
+      const { error } = await persistProject({
+        drawing_data: payload,
+        status: simplifiedModel ? 'loaded' : 'drawn'
+      });
+      if (error) {
+        setEditorStatus(`No se pudo guardar cargas: ${error.message}`, true);
+        return;
+      }
+      drawingDirty = false;
+    };
+
+    const schedulePersistDrawing = () => {
+      drawingDirty = true;
+      if (persistDrawingTimer) clearTimeout(persistDrawingTimer);
+      persistDrawingTimer = setTimeout(() => {
+        void persistDrawingFromEditor();
+      }, 700);
+    };
+
+    const refreshSimplifiedModelFromEditor = (): boolean => {
+      if (!editor) return Boolean(simplifiedModel);
+      const derived = deriveBuildingModel(editor.getState());
+      if ('error' in derived) {
+        setEditorStatus(derived.error, true);
+        return false;
+      }
+      simplifiedModel = derived.model;
+      simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
+      simplifiedModel.materials.fyMpa = 420;
+      if (derived.warnings.length > 0) showStep3Validation(derived.warnings);
+      return true;
+    };
+
     const DEFAULT_SLAB_DEAD = 1.5;
 
     const readSlabProps = (slab: SlabEntity) => ({
@@ -591,7 +609,7 @@ import IconButton from '../components/IconButton.astro';
       if (idx < 0) return;
       state.entities.slabs[idx] = updater(state.entities.slabs[idx]!);
       editor.setState(state, { commit: true });
-      drawingDirty = true;
+      schedulePersistDrawing();
       if (loadsEditor && currentStep === 3) {
         syncLoadsEditorFromMain();
         renderStep3Panel();
@@ -1076,15 +1094,25 @@ import IconButton from '../components/IconButton.astro';
     };
 
     const sync3dViewer = () => {
-      if (!model3dContainer || !simplifiedModel) return;
+      if (!model3dContainer) return;
+      refreshSimplifiedModelFromEditor();
+      if (!simplifiedModel) return;
 
+      let mountAttempts = 0;
       const mount = () => {
         if (!model3dContainer || !simplifiedModel) return;
         const w = model3dContainer.clientWidth;
         const h = model3dContainer.clientHeight;
-        if (w < 4 || h < 4) {
+        if ((w < 4 || h < 4) && mountAttempts < 120) {
+          mountAttempts += 1;
           requestAnimationFrame(mount);
           return;
+        }
+
+        const canvas = model3dContainer.querySelector('canvas');
+        if (viewer3d && canvas && (canvas.width < 4 || canvas.height < 4)) {
+          viewer3d.dispose();
+          viewer3d = null;
         }
 
         const hasResults = Boolean(pipelineResults);
@@ -1105,34 +1133,20 @@ import IconButton from '../components/IconButton.astro';
 
     const prepareModelFromDrawing = async (): Promise<boolean> => {
       if (!editor) return false;
-      const derived = deriveBuildingModel(editor.getState());
-      if ('error' in derived) {
-        setEditorStatus(derived.error, true);
-        return false;
-      }
-      simplifiedModel = derived.model;
-      simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
-      simplifiedModel.materials.fyMpa = 420;
-      if (derived.warnings.length > 0) showStep3Validation(derived.warnings);
-      if (activeProjectId) {
+      if (!refreshSimplifiedModelFromEditor()) return false;
+      if (activeProjectId && simplifiedModel) {
         await persistProject({ simplified_model: simplifiedModel, status: 'loaded' });
       }
-      return true;
+      return Boolean(simplifiedModel);
     };
 
     const enterStep4 = () => {
-      requestAnimationFrame(async () => {
-        if (!simplifiedModel && editor) {
-          const ok = await prepareModelFromDrawing();
-          if (!ok) return;
-        }
+      requestAnimationFrame(() => {
         if (!simplifiedModel) {
           setStep4CalcStatus('Complete el paso 3 (cargas) antes de calcular.', true);
           return;
         }
-
         sync3dViewer();
-
         if (pipelineResults) {
           refreshTechnicalPanel();
           setStep4CalcStatus('Resultados cargados. Seleccione un elemento en 3D.');
@@ -1140,6 +1154,55 @@ import IconButton from '../components/IconButton.astro';
           setStep4CalcStatus('Modelo en 3D. Pulse Calcular para obtener resultados.');
         }
       });
+    };
+
+    setStep = async (step: 1 | 2 | 3 | 4) => {
+      const prev = currentStep;
+      if (prev === 3 && step !== 3) {
+        const issues = step === 4 ? validateStep3() : [];
+        if (step === 4 && issues.length > 0) {
+          showStep3Validation(issues);
+          setEditorStatus('Complete las cargas por losa antes de avanzar.', true);
+          return;
+        }
+        if (editor && activeProjectId) {
+          if (persistDrawingTimer) {
+            clearTimeout(persistDrawingTimer);
+            persistDrawingTimer = null;
+          }
+          await persistDrawingFromEditor();
+        }
+      }
+      if (step === 4 && editor) {
+        const ok = await prepareModelFromDrawing();
+        if (!ok) return;
+      }
+
+      currentStep = step;
+      stepPanels.forEach((panel) => {
+        const panelStep = Number(panel.getAttribute('data-step-panel'));
+        panel.classList.toggle('hidden', panelStep !== currentStep);
+      });
+      stepPills.forEach((pill) => {
+        const pillStep = Number(pill.getAttribute('data-step-pill'));
+        const isActive = pillStep === currentStep;
+        pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      if (nextStepBtn) {
+        const label = currentStep === 4 ? 'Flujo completado' : 'Paso siguiente';
+        nextStepBtn.setAttribute('aria-label', label);
+        nextStepBtn.setAttribute('title', label);
+        nextStepBtn.toggleAttribute('disabled', currentStep === 4);
+      }
+      if (step === 2 && editor) {
+        requestAnimationFrame(() => editor!.fit());
+      }
+      if (step === 3) {
+        enterStep3();
+      }
+      if (step === 4) {
+        enterStep4();
+      }
     };
 
     if (!supabase) {
@@ -1236,7 +1299,7 @@ import IconButton from '../components/IconButton.astro';
       editor.fit();
     }
 
-    setStep(1);
+    void setStep(1);
 
     if (!activeProjectId) {
       projectSpecs = DEFAULT_PROJECT_SPECS;
@@ -1353,7 +1416,18 @@ import IconButton from '../components/IconButton.astro';
     });
 
     runCalcBtn?.addEventListener('click', async () => {
-      if (!simplifiedModel && editor) {
+      if (editor) {
+        const issues = validateStep3();
+        if (issues.length > 0) {
+          showStep3Validation(issues);
+          setStep4CalcStatus('Complete cargas en paso 3.', true);
+          return;
+        }
+        if (persistDrawingTimer) {
+          clearTimeout(persistDrawingTimer);
+          persistDrawingTimer = null;
+        }
+        await persistDrawingFromEditor();
         const ok = await prepareModelFromDrawing();
         if (!ok) {
           setStep4CalcStatus('Modelo no disponible.', true);
@@ -1416,7 +1490,7 @@ import IconButton from '../components/IconButton.astro';
     });
 
     prevStepBtn?.addEventListener('click', () => {
-      if (currentStep > 1) setStep((currentStep - 1) as 1 | 2 | 3 | 4);
+      if (currentStep > 1) void setStep((currentStep - 1) as 1 | 2 | 3 | 4);
     });
 
     nextStepBtn?.addEventListener('click', async () => {
@@ -1431,6 +1505,7 @@ import IconButton from '../components/IconButton.astro';
           freeDrawing: toLegacyFreeDrawing(state)
         };
         await persistProject({ drawing_data: payload, status: 'drawn' });
+        drawingDirty = false;
       }
       if (currentStep === 3) {
         const issues = validateStep3();
@@ -1439,12 +1514,8 @@ import IconButton from '../components/IconButton.astro';
           setEditorStatus('Complete las cargas por losa antes de avanzar.', true);
           return;
         }
-        if (!simplifiedModel && editor) {
-          const ok = await prepareModelFromDrawing();
-          if (!ok) return;
-        }
       }
-      if (currentStep < 4) setStep((currentStep + 1) as 1 | 2 | 3 | 4);
+      if (currentStep < 4) await setStep((currentStep + 1) as 1 | 2 | 3 | 4);
     });
 
     logoutBtn?.addEventListener('click', async () => {

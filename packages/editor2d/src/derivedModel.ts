@@ -122,15 +122,81 @@ export function deriveBuildingModel(
     const twX = Math.max(0.4, maxSpanY / 2);
     const twY = Math.max(0.4, maxSpanX / 2);
     const defaultSlabId = slabInputs[0]!.id;
-    beamOutputs = [1, 2, 3, 4].map((n, i) => ({
-      id: `beam-${n}`,
-      spanM: i < 2 ? maxSpanX : maxSpanY,
-      widthM: beamSection.widthM,
-      depthM: beamSection.depthM,
-      slabContributions: [
-        { slabId: defaultSlabId, tributaryWidthM: i < 2 ? twX : twY }
-      ]
-    }));
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const slab of slabInputs) {
+      const pts =
+        slab.points && slab.points.length >= 3
+          ? slab.points
+          : [
+              { x: -slab.spanXm / 2, y: -slab.spanYm / 2 },
+              { x: slab.spanXm / 2, y: -slab.spanYm / 2 },
+              { x: slab.spanXm / 2, y: slab.spanYm / 2 },
+              { x: -slab.spanXm / 2, y: slab.spanYm / 2 }
+            ];
+      for (const p of pts) {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+      }
+    }
+    if (!Number.isFinite(minX)) {
+      minX = -maxSpanX / 2;
+      maxX = maxSpanX / 2;
+      minY = -maxSpanY / 2;
+      maxY = maxSpanY / 2;
+    }
+
+    beamOutputs = [
+      {
+        id: 'beam-1',
+        spanM: maxSpanX,
+        widthM: beamSection.widthM,
+        depthM: beamSection.depthM,
+        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twX }],
+        x1: minX,
+        y1: minY,
+        x2: maxX,
+        y2: minY
+      },
+      {
+        id: 'beam-2',
+        spanM: maxSpanX,
+        widthM: beamSection.widthM,
+        depthM: beamSection.depthM,
+        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twX }],
+        x1: minX,
+        y1: maxY,
+        x2: maxX,
+        y2: maxY
+      },
+      {
+        id: 'beam-3',
+        spanM: maxSpanY,
+        widthM: beamSection.widthM,
+        depthM: beamSection.depthM,
+        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twY }],
+        x1: minX,
+        y1: minY,
+        x2: minX,
+        y2: maxY
+      },
+      {
+        id: 'beam-4',
+        spanM: maxSpanY,
+        widthM: beamSection.widthM,
+        depthM: beamSection.depthM,
+        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twY }],
+        x1: maxX,
+        y1: minY,
+        x2: maxX,
+        y2: maxY
+      }
+    ];
     warnings.push('No hay vigas en el dibujo; se generó emparrillado 4+4 por defecto.');
   }
 

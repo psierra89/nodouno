@@ -174,7 +174,8 @@ export function createStructuralViewer3d(
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(width, height);
-  renderer.domElement.className = 'block h-full w-full rounded-3xl';
+  renderer.domElement.className = 'absolute inset-0 block h-full w-full rounded-3xl';
+  renderer.domElement.style.touchAction = 'none';
   container.appendChild(renderer.domElement);
 
   const controls = new OrbitControls(camera, renderer.domElement);
