@@ -1077,16 +1077,30 @@ import IconButton from '../components/IconButton.astro';
 
     const sync3dViewer = () => {
       if (!model3dContainer || !simplifiedModel) return;
-      const hasResults = Boolean(pipelineResults);
-      if (!viewer3d) {
-        viewer3d = createStructuralViewer3d(model3dContainer, simplifiedModel, onStructuralSelect);
-      } else {
-        viewer3d.setModel(simplifiedModel);
-        viewer3d.setResultsVisible(hasResults);
-      }
-      if (selectedElementId && selectedElementType) {
-        viewer3d.selectElement(selectedElementId, selectedElementType);
-      }
+
+      const mount = () => {
+        if (!model3dContainer || !simplifiedModel) return;
+        const w = model3dContainer.clientWidth;
+        const h = model3dContainer.clientHeight;
+        if (w < 4 || h < 4) {
+          requestAnimationFrame(mount);
+          return;
+        }
+
+        const hasResults = Boolean(pipelineResults);
+        if (!viewer3d) {
+          viewer3d = createStructuralViewer3d(model3dContainer, simplifiedModel, onStructuralSelect);
+        } else {
+          viewer3d.setModel(simplifiedModel);
+          viewer3d.setResultsVisible(hasResults);
+          viewer3d.resize();
+        }
+        if (selectedElementId && selectedElementType) {
+          viewer3d.selectElement(selectedElementId, selectedElementType);
+        }
+      };
+
+      requestAnimationFrame(mount);
     };
 
     const prepareModelFromDrawing = async (): Promise<boolean> => {
@@ -1112,12 +1126,18 @@ import IconButton from '../components/IconButton.astro';
           const ok = await prepareModelFromDrawing();
           if (!ok) return;
         }
-        if (pipelineResults && simplifiedModel) {
-          sync3dViewer();
+        if (!simplifiedModel) {
+          setStep4CalcStatus('Complete el paso 3 (cargas) antes de calcular.', true);
+          return;
+        }
+
+        sync3dViewer();
+
+        if (pipelineResults) {
           refreshTechnicalPanel();
           setStep4CalcStatus('Resultados cargados. Seleccione un elemento en 3D.');
-        } else if (simplifiedModel) {
-          setStep4CalcStatus('Modelo listo. Pulse Calcular para obtener resultados.');
+        } else {
+          setStep4CalcStatus('Modelo en 3D. Pulse Calcular para obtener resultados.');
         }
       });
     };

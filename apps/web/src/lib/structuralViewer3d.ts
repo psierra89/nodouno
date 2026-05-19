@@ -18,6 +18,8 @@ export type StructuralViewerHandle = {
   setModel: (model: BuildingInput | Record<string, unknown> | null) => void;
   setResultsVisible: (visible: boolean) => void;
   selectElement: (elementId: string | null, elementType?: ElementType) => void;
+  /** Reajusta canvas tras mostrar el contenedor (evita tamaño 0 si se montó oculto). */
+  resize: () => void;
 };
 
 type SelectableUserData = {
@@ -89,13 +91,14 @@ function createSlabMesh(slab: SlabInput, slabTopY: number, color: number): THREE
   const thickness = Math.max(0.05, slab.thicknessM);
   const shape = new THREE.Shape();
   pts.forEach((p, i) => {
-    if (i === 0) shape.moveTo(p.x, p.y);
-    else shape.lineTo(p.x, p.y);
+    // Plano XZ: coordenada Y del dibujo → eje Z de Three (igual que vigas/columnas).
+    if (i === 0) shape.moveTo(p.x, -p.y);
+    else shape.lineTo(p.x, -p.y);
   });
   shape.closePath();
   const geom = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
   geom.rotateX(-Math.PI / 2);
-  geom.translate(0, slabTopY, 0);
+  geom.translate(0, slabTopY - thickness, 0);
   const mat = new THREE.MeshStandardMaterial({
     color,
     roughness: 0.75,
@@ -332,13 +335,15 @@ export function createStructuralViewer3d(
   };
   animate();
 
-  const ro = new ResizeObserver(() => {
+  const resize = () => {
     const w = Math.max(1, container.clientWidth);
-    const h = Math.max(1, container.clientHeight);
+    const h = Math.max(1, container.clientHeight || 360);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
-  });
+  };
+
+  const ro = new ResizeObserver(() => resize());
   ro.observe(container);
 
   const dispose = () => {
@@ -351,5 +356,5 @@ export function createStructuralViewer3d(
     renderer.domElement.remove();
   };
 
-  return { dispose, setModel, setResultsVisible, selectElement };
+  return { dispose, setModel, setResultsVisible, selectElement, resize };
 }
