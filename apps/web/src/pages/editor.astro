@@ -384,6 +384,7 @@ import IconButton from '../components/IconButton.astro';
       concreteStrengthMpa,
       liveLoadForTypology,
       normalizeProjectSpecs,
+      projectStatusForDb,
       type LoadTypologyCode
     } from '@nodouno/shared';
     import { createTrpcClient, getPublicApiUrl } from '../lib/trpc';
@@ -554,10 +555,7 @@ import IconButton from '../components/IconButton.astro';
         createdAt: new Date().toISOString(),
         freeDrawing: toLegacyFreeDrawing(state)
       };
-      const { error } = await persistProject({
-        drawing_data: payload,
-        status: simplifiedModel ? 'loaded' : 'drawn'
-      });
+      const { error } = await persistProject({ drawing_data: payload });
       if (error) {
         setEditorStatus(`No se pudo guardar cargas: ${error.message}`, true);
         return;
@@ -1135,7 +1133,10 @@ import IconButton from '../components/IconButton.astro';
       if (!editor) return false;
       if (!refreshSimplifiedModelFromEditor()) return false;
       if (activeProjectId && simplifiedModel) {
-        await persistProject({ simplified_model: simplifiedModel, status: 'loaded' });
+        await persistProject({
+          simplified_model: simplifiedModel,
+          status: projectStatusForDb('loaded')
+        });
       }
       return Boolean(simplifiedModel);
     };
