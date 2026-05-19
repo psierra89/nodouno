@@ -509,6 +509,19 @@ import IconButton from '../components/IconButton.astro';
       });
     });
 
+    const isApiTransportError = (error: unknown) => {
+      const msg = error instanceof Error ? error.message : String(error);
+      return /JSON\.parse|unexpected character|Unexpected token|not valid JSON|Failed to fetch|NetworkError|405|401|403/i.test(
+        msg
+      );
+    };
+
+    const persistProjectViaSupabase = async (values: Record<string, unknown>) => {
+      if (!supabase) return { error: new Error('Cliente Supabase no inicializado.') };
+      const { error } = await supabase.from('projects').update(values).eq('id', activeProjectId);
+      return { error: error ? new Error(error.message) : null };
+    };
+
     const persistProject = async (values: Record<string, unknown>) => {
       if (!activeProjectId) return { error: new Error('Proyecto no seleccionado.') };
       if (preferApi) {
@@ -518,11 +531,16 @@ import IconButton from '../components/IconButton.astro';
           await client.projects.update.mutate({ id: activeProjectId, patch: values });
           return { error: null };
         } catch (error) {
-          return { error: error as Error };
+          // Azure/IIS a veces bloquea POST en /trpc (HTML 405) → el cliente tRPC falla al parsear JSON.
+          if (supabase && isApiTransportError(error)) {
+            const fallback = await persistProjectViaSupabase(values);
+            if (!fallback.error) return { error: null };
+            return { error: fallback.error };
+          }
+          return { error: error instanceof Error ? error : new Error(String(error)) };
         }
       }
-      if (!supabase) return { error: new Error('Cliente Supabase no inicializado.') };
-      return supabase.from('projects').update(values).eq('id', activeProjectId);
+      return persistProjectViaSupabase(values);
     };
 
     const DEFAULT_SLAB_DEAD = 1.5;
