@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Button from '../components/Button.astro';
+import Icon from '../components/Icon.astro';
+import IconButton from '../components/IconButton.astro';
 ---
 <Layout>
   <main class="min-h-screen bg-canvas-white text-obsidian">
@@ -11,8 +12,8 @@ import Button from '../components/Button.astro';
       </div>
       <div class="flex flex-wrap items-center gap-11">
         <span id="session-label" class="hidden text-slate-mist md:inline">Comprobando sesion...</span>
-        <Button id="go-dashboard-btn" variant="ghost" href="/dashboard">Dashboard</Button>
-        <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
+        <IconButton id="go-dashboard-btn" variant="ghost" href="/dashboard" icon="layout-dashboard" label="Ir al dashboard" />
+        <IconButton id="logout-btn" variant="dark" icon="log-out" label="Cerrar sesion" />
       </div>
     </header>
 
@@ -21,28 +22,34 @@ import Button from '../components/Button.astro';
         <button
           type="button"
           data-step-pill="1"
-          class="cad-step-pill rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm font-bold"
+          class="cad-step-pill inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-obsidian"
+          title="Paso 1: Dibujo 2D"
+          aria-label="Paso 1: Dibujo 2D"
         >
-          1 · Dibujo 2D
+          <Icon name="pencil-ruler" size={20} />
         </button>
         <button
           type="button"
           data-step-pill="2"
-          class="cad-step-pill rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm font-bold"
+          class="cad-step-pill inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-obsidian"
+          title="Paso 2: Cargas"
+          aria-label="Paso 2: Cargas"
         >
-          2 · Cargas
+          <Icon name="weight" size={20} />
         </button>
         <button
           type="button"
           data-step-pill="3"
-          class="cad-step-pill rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm font-bold"
+          class="cad-step-pill inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-obsidian"
+          title="Paso 3: Calculo"
+          aria-label="Paso 3: Calculo"
         >
-          3 · Calculo
+          <Icon name="calculator" size={20} />
         </button>
       </div>
       <div class="flex gap-11">
-        <Button id="prev-step-btn" variant="ghost">Anterior</Button>
-        <Button id="next-step-btn" variant="dark">Siguiente</Button>
+        <IconButton id="prev-step-btn" variant="ghost" icon="chevron-left" label="Paso anterior" />
+        <IconButton id="next-step-btn" variant="dark" icon="chevron-right" label="Paso siguiente" />
       </div>
     </nav>
 
@@ -84,36 +91,36 @@ import Button from '../components/Button.astro';
       <div id="cad-shell" class="relative grid w-full" style="grid-template-columns: 64px minmax(0, 1fr) 320px; min-height: calc(100vh - 178px);">
         <aside class="flex flex-col items-center gap-11 border-r border-obsidian/30 bg-canvas-white py-16" aria-label="Herramientas">
           <button type="button" data-tool="select" class="cad-tool" title="Seleccionar (V)" aria-label="Seleccionar">
-            <span class="cad-tool-icon">V</span>
+            <Icon name="mouse-pointer" size={20} />
           </button>
           <button type="button" data-tool="pan" class="cad-tool" title="Pan (H, espacio)" aria-label="Pan">
-            <span class="cad-tool-icon">H</span>
+            <Icon name="hand" size={20} />
           </button>
           <div class="my-8 h-1 w-8 bg-obsidian/30"></div>
           <button type="button" data-tool="beam" class="cad-tool" title="Viga / Linea (L)" aria-label="Viga">
-            <span class="cad-tool-icon">L</span>
+            <Icon name="line-diagonal" size={20} />
           </button>
           <button type="button" data-tool="column" class="cad-tool" title="Columna / Rectangulo (R)" aria-label="Columna">
-            <span class="cad-tool-icon">R</span>
+            <Icon name="square" size={20} />
           </button>
           <button type="button" data-tool="slab" class="cad-tool" title="Losa / Poligono (P)" aria-label="Losa">
-            <span class="cad-tool-icon">P</span>
+            <Icon name="pentagon" size={20} />
           </button>
           <div class="my-8 h-1 w-8 bg-obsidian/30"></div>
           <button type="button" id="cad-undo" class="cad-tool" title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
-            <span class="cad-tool-icon">↶</span>
+            <Icon name="undo" size={20} />
           </button>
           <button type="button" id="cad-redo" class="cad-tool" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer">
-            <span class="cad-tool-icon">↷</span>
+            <Icon name="redo" size={20} />
           </button>
           <button type="button" id="cad-delete" class="cad-tool" title="Eliminar (Supr)" aria-label="Eliminar">
-            <span class="cad-tool-icon">×</span>
+            <Icon name="trash" size={20} />
           </button>
           <button type="button" id="cad-fit" class="cad-tool" title="Encajar (Shift+0)" aria-label="Encajar vista">
-            <span class="cad-tool-icon">⊡</span>
+            <Icon name="maximize" size={20} />
           </button>
           <button type="button" id="cad-help-toggle" class="cad-tool mt-auto" title="Atajos" aria-label="Mostrar atajos">
-            <span class="cad-tool-icon">?</span>
+            <Icon name="help-circle" size={20} />
           </button>
         </aside>
 
@@ -137,9 +144,9 @@ import Button from '../components/Button.astro';
               <span id="hud-measure" class="rounded-full border border-desert-sienna bg-canvas-white px-16 pt-13 pb-13 hidden tabular-nums">—</span>
             </div>
             <div class="pointer-events-auto flex flex-wrap items-center gap-11">
-              <Button id="cad-zoom-out" variant="ghost" class="!px-16 !pt-13 !pb-13">−</Button>
-              <Button id="cad-zoom-in" variant="ghost" class="!px-16 !pt-13 !pb-13">+</Button>
-              <Button id="cad-reset-view" variant="ghost" class="!px-16 !pt-13 !pb-13">Reset</Button>
+              <IconButton id="cad-zoom-out" variant="ghost" size="sm" icon="zoom-out" label="Alejar" />
+              <IconButton id="cad-zoom-in" variant="ghost" size="sm" icon="zoom-in" label="Acercar" />
+              <IconButton id="cad-reset-view" variant="ghost" size="sm" icon="maximize" label="Restablecer vista" />
             </div>
           </div>
           <div id="cad-help-panel" class="pointer-events-auto absolute right-22 top-68 hidden max-w-[320px] rounded-3xl border border-obsidian bg-canvas-white p-22 text-body-sm shadow-lg">
@@ -199,8 +206,8 @@ import Button from '../components/Button.astro';
           </fieldset>
 
           <div class="mt-auto grid gap-11 rounded-3xl border border-obsidian/30 p-16">
-            <Button id="save-drawing-btn" variant="primary">Guardar dibujo</Button>
-            <Button id="clear-drawing-btn" variant="ghost">Limpiar dibujo</Button>
+            <IconButton id="save-drawing-btn" variant="primary" icon="save" label="Guardar dibujo" />
+            <IconButton id="clear-drawing-btn" variant="ghost" icon="eraser" label="Limpiar dibujo" />
           </div>
         </aside>
       </div>
@@ -235,7 +242,7 @@ import Button from '../components/Button.astro';
           </label>
         </form>
         <div class="mt-16 flex flex-wrap gap-11">
-          <Button id="build-model-btn" variant="primary">Generar modelo simplificado</Button>
+          <IconButton id="build-model-btn" variant="primary" icon="boxes" label="Generar modelo simplificado" />
         </div>
         <pre id="model-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
         <div class="mt-16">
@@ -254,8 +261,8 @@ import Button from '../components/Button.astro';
         <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Calculo y dimensionamiento</h3>
         <p class="mt-11 text-slate-mist">Ejecuta el motor de calculo sobre el modelo simplificado actual.</p>
         <div class="mt-16 flex flex-wrap gap-11">
-          <Button id="run-calc-btn" variant="dark">Ejecutar calculo</Button>
-          <Button id="export-json-btn" variant="ghost">Descargar snapshot JSON</Button>
+          <IconButton id="run-calc-btn" variant="dark" icon="calculator" label="Ejecutar calculo" />
+          <IconButton id="export-json-btn" variant="ghost" icon="download" label="Descargar snapshot JSON" />
         </div>
         <pre id="calc-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
       </div>
@@ -283,7 +290,6 @@ import Button from '../components/Button.astro';
     .cad-tool:hover { background: #000d10; color: #ffffff; }
     .cad-tool[aria-pressed="true"] { background: #000d10; color: #ffffff; }
     .cad-tool[data-tool][aria-pressed="true"] { background: #bc7155; color: #ffffff; border-color: #bc7155; }
-    .cad-tool-icon { font-weight: 700; font-size: 16px; line-height: 1; }
     .cad-input {
       border-radius: 9999px;
       border: 1px solid #000d10;
@@ -418,7 +424,12 @@ import Button from '../components/Button.astro';
         const isActive = pillStep === currentStep;
         pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
       });
-      if (nextStepBtn) nextStepBtn.textContent = currentStep === 3 ? 'Finalizado' : 'Siguiente';
+      if (nextStepBtn) {
+        const label = currentStep === 3 ? 'Flujo completado' : 'Paso siguiente';
+        nextStepBtn.setAttribute('aria-label', label);
+        nextStepBtn.setAttribute('title', label);
+        nextStepBtn.toggleAttribute('disabled', currentStep === 3);
+      }
     };
 
     stepPills.forEach((pill) => {

@@ -1,13 +1,13 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Button from '../components/Button.astro';
+import IconButton from '../components/IconButton.astro';
 ---
 <Layout>
   <main class="min-h-screen bg-canvas-white px-16 py-31 text-obsidian md:px-23">
     <section class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
       <div class="mb-31 flex flex-col items-center gap-16 text-center">
         <h1 class="text-heading leading-heading tracking-heading">Dashboard</h1>
-        <Button id="logout-btn" variant="dark">Cerrar sesion</Button>
+        <IconButton id="logout-btn" variant="dark" icon="log-out" label="Cerrar sesion" />
       </div>
       <p id="session-label" class="mx-auto max-w-3xl text-center text-slate-mist">Comprobando sesion...</p>
       <section class="mt-23 rounded-3xl border border-obsidian p-22">
@@ -38,14 +38,8 @@ import Button from '../components/Button.astro';
             </select>
           </label>
           <div class="flex gap-11">
-            <Button id="create-project-btn" type="submit" variant="primary">Crear</Button>
-            <button
-              id="reset-project-form-btn"
-              type="button"
-              class="inline-flex items-center justify-center rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-obsidian transition-colors hover:bg-obsidian hover:text-canvas-white"
-            >
-              Limpiar
-            </button>
+            <IconButton id="create-project-btn" type="submit" variant="primary" icon="plus" label="Crear proyecto" />
+            <IconButton id="reset-project-form-btn" type="button" variant="ghost" icon="eraser" label="Limpiar formulario" />
           </div>
         </form>
         <p id="project-form-status" class="mt-11 text-slate-mist" role="status" aria-live="polite">
@@ -62,6 +56,7 @@ import Button from '../components/Button.astro';
   </main>
   <script>
     import { supabase } from '../lib/supabase';
+    import { iconButtonHtml } from '../lib/icons';
     import { createTrpcClient, getPublicApiUrl } from '../lib/trpc';
     import {
       DEFAULT_PROJECT_SPECS,
@@ -123,8 +118,8 @@ import Button from '../components/Button.astro';
             <div class="space-y-16">
               <p class="text-body-sm font-bold text-obsidian">¿Eliminar este proyecto de forma permanente? Esta accion no se puede deshacer.</p>
               <div class="flex flex-wrap gap-11">
-                <button type="button" data-cancel-delete="1" class="inline-flex items-center justify-center rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-obsidian transition-colors hover:bg-obsidian hover:text-canvas-white">Cancelar</button>
-                <button type="button" data-confirm-delete="${project.id}" class="inline-flex items-center justify-center rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-obsidian transition-colors hover:bg-desert-sienna hover:text-canvas-white">Confirmar eliminacion</button>
+                ${iconButtonHtml('x', 'Cancelar eliminacion', 'text-obsidian hover:bg-obsidian hover:text-canvas-white', { 'data-cancel-delete': '1' })}
+                ${iconButtonHtml('check', 'Confirmar eliminacion', 'text-obsidian hover:bg-desert-sienna hover:text-canvas-white', { 'data-confirm-delete': project.id })}
               </div>
             </div>
           `;
@@ -136,8 +131,8 @@ import Button from '../components/Button.astro';
                 <p class="text-slate-mist">Estado: ${statusLabel}</p>
               </div>
               <div class="flex flex-wrap gap-11">
-                <button type="button" data-open-id="${project.id}" class="inline-flex items-center justify-center rounded-full border border-obsidian bg-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-canvas-white transition-opacity hover:opacity-90">Abrir</button>
-                <button type="button" data-request-delete="${project.id}" class="inline-flex items-center justify-center rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none font-bold text-obsidian transition-colors hover:bg-obsidian hover:text-canvas-white">Eliminar</button>
+                ${iconButtonHtml('folder-open', 'Abrir proyecto', 'bg-obsidian text-canvas-white hover:opacity-90', { 'data-open-id': project.id })}
+                ${iconButtonHtml('trash', 'Eliminar proyecto', 'text-obsidian hover:bg-obsidian hover:text-canvas-white', { 'data-request-delete': project.id })}
               </div>
             </div>
           `;
