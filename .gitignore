@@ -16,6 +16,14 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.env.vercel.*
+.env*.local
+
+# turbo monorepo cache
+.turbo/
+
+# artefactos locales de deploy Azure (el CI genera .azure-deploy/iis en Actions)
+.azure-deploy/
 
 # macOS-specific files
 .DS_Store
