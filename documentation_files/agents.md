@@ -48,7 +48,8 @@ Esta sección resume problemas reales que ya ocurrieron y la forma correcta de e
 ### 3) Backend en Azure: formato de despliegue estable
 - Para este repo, el despliegue estable es:
   - bundle de `apps/api/src/server.ts` con `esbuild` a `server.js`,
-  - `web.config` con `iisnode` + rewrite a `server.js`,
+  - `package.json` mínimo con `scripts.start = "node server.js"`,
+  - sin `web.config` custom; App Service Windows genera/usa su integración Node estable,
   - zip de artefacto mínimo para deploy.
 - El workflow de referencia es `.github/workflows/deploy-api-azure.yml`.
 
@@ -82,30 +83,40 @@ El workflow `.github/workflows/deploy-api-azure.yml` puede fallar si el secret `
 **Requisitos:** `az login`, `pnpm install`, `esbuild` en devDependencies de la raíz.
 
 ```bash
-# 1) Bundle + artefacto IIS (httpPlatformHandler, no iisnode)
-mkdir -p .azure-deploy/iis
+# 1) Bundle + artefacto Node para App Service Windows
+mkdir -p .azure-deploy/runtime
 pnpm exec esbuild apps/api/src/server.ts \
   --bundle --platform=node --target=node22 --format=cjs \
-  --outfile=.azure-deploy/iis/server.js
-cp apps/api/deploy/web.config .azure-deploy/iis/web.config
+  --outfile=.azure-deploy/runtime/server.js
+cat > .azure-deploy/runtime/package.json <<'EOF'
+{
+  "name": "nodouno-api-runtime",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=22" }
+}
+EOF
 
 # 2) Zip mínimo
-cd .azure-deploy/iis
-zip -r ../api-iis-deploy.zip server.js web.config package.json
+cd .azure-deploy/runtime
+zip -r ../api-node-runtime.zip server.js package.json
 cd ../..
 
 # 3) Deploy
 az webapp deploy \
   --resource-group nodouno-rg-swedencentral \
   --name nodouno-api-psierra89 \
-  --src-path .azure-deploy/api-iis-deploy.zip \
+  --src-path .azure-deploy/api-node-runtime.zip \
   --type zip
 ```
 
-**PowerShell (Windows):** sustituir el paso 2 por `Compress-Archive -Path server.js,web.config,package.json -DestinationPath ../api-iis-deploy.zip -Force` desde `.azure-deploy/iis`.
+**PowerShell (Windows):** sustituir el paso 2 por `Compress-Archive -Path server.js,package.json -DestinationPath ../api-node-runtime.zip -Force` desde `.azure-deploy/runtime`.
 
 **Problemas conocidos ya resueltos en este proyecto:**
-- IIS + **iisnode** bloqueaba POST → HTML 405 *"invalid method"*. Solución: `apps/api/deploy/web.config` con **httpPlatformHandler** (todos los verbos a Node).
+- `web.config` custom con **httpPlatformHandler** no está soportado en este App Service Windows y provoca IIS `500.19` (`0x8007000d`). Solución estable: desplegar solo `server.js` + `package.json` con `start`; App Service enruta POST a Node y tRPC responde JSON.
 - Faltaba columna `projects.specs` en Supabase → migración `supabase/migrations/20260519100000_add_project_specs.sql`.
 - Cliente web tRPC v11: `transformer: superjson` va en `httpLink`, no en la raíz de `createTRPCProxyClient`; usar `httpLink` (no `httpBatchLink`) en Azure.
 
