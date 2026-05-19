@@ -71,3 +71,4 @@ Esta sección resume problemas reales que ya ocurrieron y la forma correcta de e
 - Frontend:
   - abrir `/login`, `/dashboard`, `/editor`
   - revisar red/console por CORS o 401/500.
+- Login de prueba: ver [credenciales-prueba.md](./credenciales-prueba.md) (email y contraseña solo en `.env`, gitignored).

@@ -73,7 +73,11 @@ import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
       });
 
       if (error) {
-        setStatus(`Error: ${error.message}`);
+        const hint =
+          error.message === 'Failed to fetch'
+            ? ' No se pudo contactar Supabase (revisa que el proyecto este activo y las variables PUBLIC_SUPABASE_* en Vercel).'
+            : '';
+        setStatus(`Error: ${error.message}${hint}`);
         return;
       }
       window.location.href = '/dashboard';
