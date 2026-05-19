@@ -258,7 +258,7 @@ import IconButton from '../components/IconButton.astro';
           <div>
             <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Cargas</h3>
             <p class="mt-8 text-slate-mist">
-              Seleccione una losa en planta o en la lista. Solo se asignan cargas (CIRSOC 101); la geometría se define en el paso 2.
+              Seleccione una losa en planta o en la lista. Solo se asignan cargas (CIRSOC 101); el cálculo estructural se ejecuta en el paso 4.
             </p>
           </div>
           <p id="step3-validation" class="hidden rounded-3xl border border-desert-sienna bg-desert-sienna/10 px-16 py-13 text-body-sm text-desert-sienna" role="alert"></p>
@@ -273,33 +273,44 @@ import IconButton from '../components/IconButton.astro';
             <div id="step3-load-fields" class="grid gap-11"></div>
             <p id="step3-load-preview" class="text-body-sm text-slate-mist tabular-nums"></p>
           </div>
-          <div class="mt-auto grid gap-11 pt-11">
-            <IconButton id="build-model-btn" variant="primary" icon="boxes" label="Preparar modelo estructural" />
-          </div>
+          <p class="mt-auto rounded-3xl border border-obsidian/20 bg-canvas-white px-16 py-13 text-body-sm text-slate-mist">
+            El modelo estructural se prepara automaticamente al avanzar al paso 4.
+          </p>
         </aside>
-      </div>
-      <div class="border-t border-obsidian/20 px-22 py-22">
-        <pre id="model-output" class="max-h-[200px] overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
-        <div class="mt-16">
-          <h4 class="text-heading-sm leading-heading-sm tracking-heading-sm">Vista 3D</h4>
-          <p class="mt-11 text-slate-mist">Orbita con arrastre, zoom con la rueda.</p>
-          <div
-            id="model-3d-container"
-            class="relative mt-11 h-[min(32vh,280px)] min-h-[200px] w-full overflow-hidden rounded-3xl border border-obsidian bg-[#f8f8f8]"
-          ></div>
-        </div>
       </div>
     </section>
 
-    <section id="step-panel-4" data-step-panel="4" class="hidden px-22 py-31">
-      <div class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
-        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 4 · Calculo y dimensionamiento</h3>
-        <p class="mt-11 text-slate-mist">Ejecuta el motor de calculo sobre el modelo simplificado actual.</p>
-        <div class="mt-16 flex flex-wrap gap-11">
-          <IconButton id="run-calc-btn" variant="dark" icon="calculator" label="Ejecutar calculo" />
-          <IconButton id="export-json-btn" variant="ghost" icon="download" label="Descargar snapshot JSON" />
+    <section id="step-panel-4" data-step-panel="4" class="hidden flex flex-col" style="min-height: calc(100vh - 130px);">
+      <div
+        id="step4-shell"
+        class="grid min-h-0 flex-1"
+        style="grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);"
+      >
+        <div class="flex min-h-[360px] flex-col gap-16 border-r border-obsidian/20 bg-[#fafafa] p-22">
+          <div>
+            <h3 class="text-subheading leading-subheading tracking-subheading">Paso 4 · Calculo y dimensionamiento</h3>
+            <p class="mt-8 text-slate-mist">
+              Ejecuta el calculo y revisa resultados tecnicos por elemento seleccionado.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-11">
+            <IconButton id="run-calc-btn" variant="dark" icon="calculator" label="Calcular" />
+            <p id="step4-calc-status" class="text-body-sm text-slate-mist">Pendiente de calculo.</p>
+          </div>
+          <div
+            id="model-3d-container"
+            class="relative min-h-[320px] flex-1 overflow-hidden rounded-3xl border border-obsidian bg-[#f8f8f8]"
+          ></div>
         </div>
-        <pre id="calc-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
+        <aside class="flex flex-col gap-11 overflow-y-auto bg-canvas-white p-22" aria-label="Panel tecnico">
+          <h4 class="text-heading-sm leading-heading-sm tracking-heading-sm">Panel tecnico</h4>
+          <div
+            id="step4-tech-panel"
+            class="min-h-[220px] rounded-3xl border border-obsidian/30 bg-canvas-white p-16 text-body-sm text-slate-mist"
+          >
+            Seleccione un elemento en la vista para mostrar el detalle tecnico.
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -341,13 +352,18 @@ import IconButton from '../components/IconButton.astro';
       #cad-shell aside[aria-label="Propiedades"] { display: none; }
       #loads-shell { grid-template-columns: minmax(0, 1fr); }
       #loads-shell aside[aria-label="Cargas por losa"] { max-height: 40vh; border-left: none; border-top: 1px solid rgba(0, 13, 16, 0.2); }
+      #step4-shell { grid-template-columns: minmax(0, 1fr); }
+      #step4-shell > div { border-right: none; border-bottom: 1px solid rgba(0, 13, 16, 0.2); }
     }
     #loads-canvas { touch-action: none; cursor: default; }
+    .tech-diagram svg { display: block; }
+    .tech-panel header + dl { margin-top: 0; }
   </style>
 
   <script>
     import { supabase } from '../lib/supabase';
-    import { createSimplifiedModelViewer } from '../lib/modelViewer3d';
+    import { createStructuralViewer3d } from '../lib/structuralViewer3d';
+    import { renderTechnicalPanel, type CalcPipelineResults } from '../lib/technicalPanel';
     import {
       calculateDemands,
       calculateDesign,
@@ -355,7 +371,7 @@ import IconButton from '../components/IconButton.astro';
       calculateUltimateSurfaceLoad,
       normalizeBuildingInput
     } from '@nodouno/calc';
-    import type { BuildingInput } from '@nodouno/calc';
+    import type { BuildingInput, ElementType } from '@nodouno/calc';
     import { mountEditor2d } from '@nodouno/editor2d';
     import type { DrawingState, Editor2DHandle, HudInfo, SlabEntity, ToolKind } from '@nodouno/editor2d';
     import { deriveBuildingModel } from '@nodouno/editor2d/derivedModel';
@@ -379,11 +395,9 @@ import IconButton from '../components/IconButton.astro';
     const stepPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-step-panel]'));
     const prevStepBtn = document.querySelector<HTMLButtonElement>('#prev-step-btn');
     const nextStepBtn = document.querySelector<HTMLButtonElement>('#next-step-btn');
-    const buildModelBtn = document.querySelector<HTMLButtonElement>('#build-model-btn');
     const runCalcBtn = document.querySelector<HTMLButtonElement>('#run-calc-btn');
-    const exportJsonBtn = document.querySelector<HTMLButtonElement>('#export-json-btn');
-    const modelOutput = document.querySelector<HTMLElement>('#model-output');
-    const calcOutput = document.querySelector<HTMLElement>('#calc-output');
+    const step4CalcStatus = document.querySelector<HTMLElement>('#step4-calc-status');
+    const step4TechPanel = document.querySelector<HTMLElement>('#step4-tech-panel');
     const model3dContainer = document.querySelector<HTMLElement>('#model-3d-container');
     const loadsCanvas = document.querySelector<HTMLCanvasElement>('#loads-canvas');
     const loadsHudStatus = document.querySelector<HTMLElement>('#loads-hud-status');
@@ -444,8 +458,10 @@ import IconButton from '../components/IconButton.astro';
     let loadsEditor: Editor2DHandle | null = null;
     let drawingDirty = false;
     let simplifiedModel: BuildingInput | null = null;
-    let lastResults: Record<string, unknown> | null = null;
-    let viewer3d: ReturnType<typeof createSimplifiedModelViewer> | null = null;
+    let pipelineResults: CalcPipelineResults | null = null;
+    let viewer3d: ReturnType<typeof createStructuralViewer3d> | null = null;
+    let selectedElementId: string | null = null;
+    let selectedElementType: ElementType | null = null;
     let projectSpecs = DEFAULT_PROJECT_SPECS;
     const apiUrl = getPublicApiUrl();
     const preferApi = Boolean(apiUrl);
@@ -469,6 +485,13 @@ import IconButton from '../components/IconButton.astro';
       specsStatus.textContent = message;
       specsStatus.classList.toggle('text-desert-sienna', isError);
       specsStatus.classList.toggle('text-slate-mist', !isError);
+    };
+
+    const setStep4CalcStatus = (message: string, isError = false) => {
+      if (!step4CalcStatus) return;
+      step4CalcStatus.textContent = message;
+      step4CalcStatus.classList.toggle('text-desert-sienna', isError);
+      step4CalcStatus.classList.toggle('text-slate-mist', !isError);
     };
 
     const syncSpecsControls = () => {
@@ -499,6 +522,9 @@ import IconButton from '../components/IconButton.astro';
       }
       if (step === 3) {
         enterStep3();
+      }
+      if (step === 4) {
+        enterStep4();
       }
     };
 
@@ -994,13 +1020,106 @@ import IconButton from '../components/IconButton.astro';
       }
     };
 
+    const hydratePipelineResults = (
+      calculations: unknown,
+      dimensioning: unknown
+    ): CalcPipelineResults | null => {
+      if (!calculations || typeof calculations !== 'object') return null;
+      const calc = calculations as Record<string, unknown>;
+      const loadsRaw = calc.loads as Record<string, unknown> | undefined;
+      const demandsRaw = calc.demands as Record<string, unknown> | undefined;
+      if (!loadsRaw || !demandsRaw || !dimensioning) return null;
+
+      const model = simplifiedModel ? normalizeBuildingInput(simplifiedModel) : null;
+
+      const loads = loadsRaw as CalcPipelineResults['calculations']['loads'];
+      if (!Array.isArray(loads.beams) && Array.isArray(loadsRaw.beamLineLoadsKnm) && model) {
+        loads.beams = loadsRaw.beamLineLoadsKnm.map((q, i) => ({
+          elementId: model.beams[i]?.id ?? `beam-${i + 1}`,
+          elementType: 'beam' as const,
+          lineLoadKnm: Number(q)
+        }));
+      }
+      if (!Array.isArray(loads.columns) && Array.isArray(loadsRaw.columnAxialLoadsKn) && model) {
+        loads.columns = loadsRaw.columnAxialLoadsKn.map((pu, i) => ({
+          elementId: model.columns[i]?.id ?? `column-${i + 1}`,
+          elementType: 'column' as const,
+          axialLoadKn: Number(pu)
+        }));
+      }
+
+      return {
+        calculations: {
+          loads,
+          demands: demandsRaw as CalcPipelineResults['calculations']['demands']
+        },
+        dimensioning: dimensioning as CalcPipelineResults['dimensioning']
+      };
+    };
+
+    const refreshTechnicalPanel = () => {
+      if (!step4TechPanel) return;
+      renderTechnicalPanel(
+        step4TechPanel,
+        simplifiedModel,
+        pipelineResults,
+        selectedElementId,
+        selectedElementType
+      );
+    };
+
+    const onStructuralSelect = (elementId: string, elementType: ElementType) => {
+      selectedElementId = elementId;
+      selectedElementType = elementType;
+      viewer3d?.selectElement(elementId, elementType);
+      refreshTechnicalPanel();
+    };
+
     const sync3dViewer = () => {
-      if (!model3dContainer) return;
+      if (!model3dContainer || !simplifiedModel) return;
+      const hasResults = Boolean(pipelineResults);
       if (!viewer3d) {
-        viewer3d = createSimplifiedModelViewer(model3dContainer, simplifiedModel);
+        viewer3d = createStructuralViewer3d(model3dContainer, simplifiedModel, onStructuralSelect);
       } else {
         viewer3d.setModel(simplifiedModel);
+        viewer3d.setResultsVisible(hasResults);
       }
+      if (selectedElementId && selectedElementType) {
+        viewer3d.selectElement(selectedElementId, selectedElementType);
+      }
+    };
+
+    const prepareModelFromDrawing = async (): Promise<boolean> => {
+      if (!editor) return false;
+      const derived = deriveBuildingModel(editor.getState());
+      if ('error' in derived) {
+        setEditorStatus(derived.error, true);
+        return false;
+      }
+      simplifiedModel = derived.model;
+      simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
+      simplifiedModel.materials.fyMpa = 420;
+      if (derived.warnings.length > 0) showStep3Validation(derived.warnings);
+      if (activeProjectId) {
+        await persistProject({ simplified_model: simplifiedModel, status: 'loaded' });
+      }
+      return true;
+    };
+
+    const enterStep4 = () => {
+      requestAnimationFrame(async () => {
+        if (!simplifiedModel && editor) {
+          const ok = await prepareModelFromDrawing();
+          if (!ok) return;
+        }
+        if (pipelineResults && simplifiedModel) {
+          sync3dViewer();
+          refreshTechnicalPanel();
+          setStep4CalcStatus('Resultados cargados. Seleccione un elemento en 3D.');
+        } else if (simplifiedModel) {
+          setStep4CalcStatus('Modelo listo. Pulse Calcular para obtener resultados.');
+        }
+      });
     };
 
     if (!supabase) {
@@ -1065,14 +1184,15 @@ import IconButton from '../components/IconButton.astro';
       }
       if (projectData?.simplified_model) {
         simplifiedModel = normalizeBuildingInput(projectData.simplified_model);
-        if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
       }
       if (projectData?.calculations || projectData?.dimensioning) {
-        lastResults = {
-          calculations: projectData.calculations,
-          dimensioning: projectData.dimensioning
-        };
-        if (calcOutput) calcOutput.textContent = JSON.stringify(lastResults, null, 2);
+        pipelineResults = hydratePipelineResults(
+          projectData.calculations,
+          projectData.dimensioning
+        );
+        if (pipelineResults) {
+          setStep4CalcStatus('Resultados cargados desde proyecto.');
+        }
       }
     }
 
@@ -1212,72 +1332,67 @@ import IconButton from '../components/IconButton.astro';
       setEditorStatus('Dibujo limpiado.');
     });
 
-    buildModelBtn?.addEventListener('click', async () => {
-      const issues = validateStep3();
-      showStep3Validation(issues);
-      if (issues.length > 0) {
-        setEditorStatus('Complete las tipologías de todas las losas antes de preparar el modelo.', true);
-        return;
-      }
-      const state = editor?.getState();
-      if (!state) return;
-      const derived = deriveBuildingModel(state);
-      if ('error' in derived) {
-        setEditorStatus(derived.error, true);
-        return;
-      }
-      simplifiedModel = derived.model;
-      if (derived.warnings.length > 0) {
-        showStep3Validation(derived.warnings);
-      }
-      simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
-      simplifiedModel.materials.fyMpa = 420;
-
-      if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
-      sync3dViewer();
-      const { error } = await persistProject({
-        simplified_model: simplifiedModel,
-        status: 'loaded'
-      });
-      if (error) {
-        setEditorStatus(`Modelo generado, pero no se pudo guardar: ${error.message}`, true);
-        return;
-      }
-      setEditorStatus('Modelo estructural preparado y guardado.');
-    });
-
     runCalcBtn?.addEventListener('click', async () => {
+      if (!simplifiedModel && editor) {
+        const ok = await prepareModelFromDrawing();
+        if (!ok) {
+          setStep4CalcStatus('Modelo no disponible.', true);
+          return;
+        }
+      }
       if (!simplifiedModel) {
-        setEditorStatus('Primero prepare el modelo estructural en el paso 3.', true);
+        setEditorStatus('Complete cargas en el paso 3 antes de calcular.', true);
+        setStep4CalcStatus('Modelo no disponible.', true);
         return;
       }
       const model = normalizeBuildingInput(simplifiedModel);
-      setEditorStatus('Ejecutando calculo y dimensionamiento...');
-      const loads = calculateLoads(model);
-      const demands = calculateDemands(model);
-      const design = calculateDesign(model);
-      lastResults = {
-        calculations: { loads, demands },
-        dimensioning: design
-      };
-      if (calcOutput) calcOutput.textContent = JSON.stringify(lastResults, null, 2);
-      const { error: errCalc } = await persistProject({
-        calculations: lastResults.calculations,
-        status: 'calculated'
-      });
-      if (errCalc) {
-        setEditorStatus(`Calculo completado, pero no se pudo persistir cargas: ${errCalc.message}`, true);
-        return;
+      setEditorStatus('Ejecutando cálculo en servidor...');
+      setStep4CalcStatus('Calculando...');
+      if (runCalcBtn) runCalcBtn.disabled = true;
+
+      let result: CalcPipelineResults | null = null;
+      const client = getTrpcClient();
+      if (preferApi && client) {
+        try {
+          result = await client.calc.runPipeline.mutate({ simplifiedModel: model });
+        } catch (error) {
+          if (!isApiTransportError(error)) {
+            setEditorStatus(`Error de cálculo (API): ${(error as Error).message}`, true);
+            setStep4CalcStatus('Error en el cálculo.', true);
+            if (runCalcBtn) runCalcBtn.disabled = false;
+            return;
+          }
+        }
       }
-      const { error: errDim } = await persistProject({
-        dimensioning: lastResults.dimensioning,
+      if (!result) {
+        const loads = calculateLoads(model);
+        const demands = calculateDemands(model);
+        const dimensioning = calculateDesign(model);
+        result = { calculations: { loads, demands }, dimensioning };
+      }
+
+      pipelineResults = result;
+      const { error: persistErr } = await persistProject({
+        calculations: pipelineResults.calculations,
+        dimensioning: pipelineResults.dimensioning,
         status: 'dimensioned'
       });
-      if (errDim) {
-        setEditorStatus(`Dimensionamiento listo, pero no se pudo persistir: ${errDim.message}`, true);
-        return;
+      if (persistErr) {
+        setEditorStatus(`Cálculo listo, pero no se pudo guardar: ${persistErr.message}`, true);
+        setStep4CalcStatus('Resultados en memoria; error al guardar.', true);
+      } else {
+        setEditorStatus('Cálculo y dimensionamiento guardados.');
+        setStep4CalcStatus('Cálculo completado. Seleccione un elemento en 3D.');
       }
-      setEditorStatus('Calculo y dimensionamiento persistidos.');
+
+      sync3dViewer();
+      if (!selectedElementId && simplifiedModel.slabs[0]) {
+        selectedElementId = simplifiedModel.slabs[0].id;
+        selectedElementType = 'slab';
+        viewer3d?.selectElement(selectedElementId, selectedElementType);
+      }
+      refreshTechnicalPanel();
+      if (runCalcBtn) runCalcBtn.disabled = false;
     });
 
     prevStepBtn?.addEventListener('click', () => {
@@ -1305,16 +1420,8 @@ import IconButton from '../components/IconButton.astro';
           return;
         }
         if (!simplifiedModel && editor) {
-          const derived = deriveBuildingModel(editor.getState());
-          if ('error' in derived) {
-            setEditorStatus(derived.error, true);
-            return;
-          }
-          simplifiedModel = derived.model;
-          simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
-          if (modelOutput) modelOutput.textContent = JSON.stringify(simplifiedModel, null, 2);
-          await persistProject({ simplified_model: simplifiedModel, status: 'loaded' });
-          sync3dViewer();
+          const ok = await prepareModelFromDrawing();
+          if (!ok) return;
         }
       }
       if (currentStep < 4) setStep((currentStep + 1) as 1 | 2 | 3 | 4);
@@ -1333,48 +1440,5 @@ import IconButton from '../components/IconButton.astro';
       }
     });
 
-    exportJsonBtn?.addEventListener('click', async () => {
-      const snapshot = {
-        exportedAt: new Date().toISOString(),
-        projectId: activeProjectId,
-        specs: projectSpecs,
-        simplified_model: simplifiedModel,
-        calculations: lastResults?.calculations ?? null,
-        dimensioning: lastResults?.dimensioning ?? null
-      };
-      const client = getTrpcClient();
-      if (preferApi) {
-        if (!client || !activeProjectId) {
-          setEditorStatus('API configurada pero no se pudo exportar en servidor.', true);
-          return;
-        }
-        try {
-          const server = await client.exports.requestJson.mutate({
-            projectId: activeProjectId as string
-          });
-          downloadJsonBlob(`nodouno-export-${activeProjectId}.json`, server.snapshot);
-          setEditorStatus('Snapshot JSON generado (servidor).');
-          return;
-        } catch (error) {
-          setEditorStatus(
-            `No se pudo exportar desde API: ${(error as Error).message ?? error}.`,
-            true
-          );
-          return;
-        }
-      }
-      downloadJsonBlob(`nodouno-export-${activeProjectId ?? 'local'}.json`, snapshot);
-      setEditorStatus('Snapshot JSON descargado (local).');
-    });
-
-    function downloadJsonBlob(filename: string, data: unknown) {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
   </script>
 </Layout>

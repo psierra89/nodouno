@@ -27,6 +27,20 @@ function normalizeSlab(raw: unknown, index: number): SlabInput | null {
   const areaM2 = toNumber(raw.areaM2, spanXm * spanYm);
   const loadTypologyCode =
     typeof raw.loadTypologyCode === 'string' ? raw.loadTypologyCode : 'CUSTOM';
+  let points: SlabInput['points'];
+  if (Array.isArray(raw.points)) {
+    points = raw.points
+      .map((p) => {
+        if (!isRecord(p)) return null;
+        const x = toNumber(p.x, NaN);
+        const y = toNumber(p.y, NaN);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return { x, y };
+      })
+      .filter((p): p is { x: number; y: number } => p !== null);
+    if (points.length < 3) points = undefined;
+  }
+
   return {
     id,
     spanXm,
@@ -35,7 +49,8 @@ function normalizeSlab(raw: unknown, index: number): SlabInput | null {
     thicknessM,
     deadLoadKnm2,
     liveLoadKnm2,
-    loadTypologyCode
+    loadTypologyCode,
+    points
   };
 }
 
@@ -70,19 +85,33 @@ function normalizeBeam(raw: unknown, index: number, globalTributary: number): Be
     slabContributions = [{ slabId: 'legacy', tributaryWidthM: legacyTw }];
   }
 
+  const x1 = typeof raw.x1 === 'number' ? raw.x1 : undefined;
+  const y1 = typeof raw.y1 === 'number' ? raw.y1 : undefined;
+  const x2 = typeof raw.x2 === 'number' ? raw.x2 : undefined;
+  const y2 = typeof raw.y2 === 'number' ? raw.y2 : undefined;
+
   return {
     id,
     spanM,
     widthM,
     depthM,
     slabContributions,
-    selfWeightKnm: typeof raw.selfWeightKnm === 'number' ? raw.selfWeightKnm : undefined
+    selfWeightKnm: typeof raw.selfWeightKnm === 'number' ? raw.selfWeightKnm : undefined,
+    x1,
+    y1,
+    x2,
+    y2
   };
 }
 
-function normalizeColumn(raw: unknown): ColumnInput | null {
+function normalizeColumn(raw: unknown, index: number): ColumnInput | null {
   if (!isRecord(raw)) return null;
+  const cx = typeof raw.cx === 'number' ? raw.cx : undefined;
+  const cy = typeof raw.cy === 'number' ? raw.cy : undefined;
   return {
+    id: typeof raw.id === 'string' && raw.id.length > 0 ? raw.id : `column-${index + 1}`,
+    cx,
+    cy,
     widthM: toNumber(raw.widthM, 0.35),
     depthM: toNumber(raw.depthM, 0.35),
     floors: Math.max(1, Math.round(toNumber(raw.floors, 2))),
@@ -125,7 +154,7 @@ export function normalizeBuildingInput(raw: unknown): BuildingInput {
   }
 
   const columns = (Array.isArray(raw.columns) ? raw.columns : [])
-    .map((c) => normalizeColumn(c))
+    .map((c, i) => normalizeColumn(c, i))
     .filter((c): c is ColumnInput => c !== null);
 
   const materials = isRecord(raw.materials)

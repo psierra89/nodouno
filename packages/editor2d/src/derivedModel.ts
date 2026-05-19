@@ -62,7 +62,8 @@ function slabToInput(slab: SlabEntity): BuildingInput['slabs'][number] | DeriveB
     thicknessM: slab.thicknessM > 0 ? slab.thicknessM : 0.2,
     deadLoadKnm2: loadProps.deadLoadKnm2 ?? DEFAULT_DEAD_LOAD_KNM2,
     liveLoadKnm2: live,
-    loadTypologyCode: loadProps.loadTypologyCode
+    loadTypologyCode: loadProps.loadTypologyCode,
+    points: slab.points.map((p) => ({ x: p.x, y: p.y }))
   };
 }
 
@@ -108,7 +109,11 @@ export function deriveBuildingModel(
         spanM: Math.max(0.5, beamSpanM(b)),
         widthM: b.widthM,
         depthM: b.depthM,
-        slabContributions: contributions
+        slabContributions: contributions,
+        x1: b.x1,
+        y1: b.y1,
+        x2: b.x2,
+        y2: b.y2
       };
     });
   } else {
@@ -117,50 +122,36 @@ export function deriveBuildingModel(
     const twX = Math.max(0.4, maxSpanY / 2);
     const twY = Math.max(0.4, maxSpanX / 2);
     const defaultSlabId = slabInputs[0]!.id;
-    beamOutputs = [
-      {
-        spanM: maxSpanX,
-        widthM: beamSection.widthM,
-        depthM: beamSection.depthM,
-        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twX }]
-      },
-      {
-        spanM: maxSpanX,
-        widthM: beamSection.widthM,
-        depthM: beamSection.depthM,
-        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twX }]
-      },
-      {
-        spanM: maxSpanY,
-        widthM: beamSection.widthM,
-        depthM: beamSection.depthM,
-        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twY }]
-      },
-      {
-        spanM: maxSpanY,
-        widthM: beamSection.widthM,
-        depthM: beamSection.depthM,
-        slabContributions: [{ slabId: defaultSlabId, tributaryWidthM: twY }]
-      }
-    ];
+    beamOutputs = [1, 2, 3, 4].map((n, i) => ({
+      id: `beam-${n}`,
+      spanM: i < 2 ? maxSpanX : maxSpanY,
+      widthM: beamSection.widthM,
+      depthM: beamSection.depthM,
+      slabContributions: [
+        { slabId: defaultSlabId, tributaryWidthM: i < 2 ? twX : twY }
+      ]
+    }));
     warnings.push('No hay vigas en el dibujo; se generó emparrillado 4+4 por defecto.');
   }
 
   let columnOutputs: BuildingInput['columns'];
   if (columnsDrawn.length > 0) {
     columnOutputs = columnsDrawn.map((c) => ({
+      id: c.id,
+      cx: c.cx,
+      cy: c.cy,
       widthM: c.widthM,
       depthM: c.depthM,
       floors: 2,
       momentKnm: undefined
     }));
   } else {
-    columnOutputs = [
-      { widthM: columnSection.widthM, depthM: columnSection.depthM, floors: 2 },
-      { widthM: columnSection.widthM, depthM: columnSection.depthM, floors: 2 },
-      { widthM: columnSection.widthM, depthM: columnSection.depthM, floors: 2 },
-      { widthM: columnSection.widthM, depthM: columnSection.depthM, floors: 2 }
-    ];
+    columnOutputs = [1, 2, 3, 4].map((n) => ({
+      id: `column-${n}`,
+      widthM: columnSection.widthM,
+      depthM: columnSection.depthM,
+      floors: 2
+    }));
     warnings.push('No hay columnas en el dibujo; se usaron 4 columnas esquineras por defecto.');
   }
 

@@ -94,10 +94,14 @@ const calculateColumn = (
 export const calculateDesign = (input: BuildingInput): DesignResult => {
   const demands = calculateDemands(input);
   const { materials } = input;
+  const slabDemandById = new Map(demands.slabs.map((demand) => [demand.elementId, demand]));
+  const beamDemandById = new Map(demands.beams.map((demand) => [demand.elementId, demand]));
+  const columnDemandById = new Map(demands.columns.map((demand) => [demand.elementId, demand]));
 
   const slabs = input.slabs.map((slab, index) => {
-    const mu = demands.slabs[index]?.MuKnmPerM ?? 0;
-    return calculateFlexure(
+    const slabDemand = slabDemandById.get(slab.id) ?? demands.slabs[index];
+    const mu = slabDemand?.MuKnmPerM ?? 0;
+    const flexure = calculateFlexure(
       mu,
       1,
       slab.thicknessM,
@@ -105,11 +109,19 @@ export const calculateDesign = (input: BuildingInput): DesignResult => {
       materials.fyMpa,
       materials.phiFlexion
     );
+    return {
+      elementId: slab.id,
+      elementType: 'slab' as const,
+      ...flexure
+    };
   });
 
   const beams = input.beams.map((beam, index) => {
-    const demand = demands.beams[index];
+    const beamId = beam.id ?? `beam-${index + 1}`;
+    const demand = beamDemandById.get(beamId) ?? demands.beams[index];
     return {
+      elementId: beamId,
+      elementType: 'beam' as const,
       flexion: calculateFlexure(
         demand?.MuKnm ?? 0,
         beam.widthM,
@@ -129,8 +141,9 @@ export const calculateDesign = (input: BuildingInput): DesignResult => {
   });
 
   const columns = input.columns.map((col, index) => {
-    const demand = demands.columns[index];
-    return calculateColumn(
+    const columnId = col.id ?? `column-${index + 1}`;
+    const demand = columnDemandById.get(columnId) ?? demands.columns[index];
+    const columnDesign = calculateColumn(
       demand?.PuKn ?? 0,
       demand?.MuKnm ?? 0,
       col.widthM,
@@ -138,6 +151,11 @@ export const calculateDesign = (input: BuildingInput): DesignResult => {
       materials.fckMpa,
       materials.fyMpa
     );
+    return {
+      elementId: columnId,
+      elementType: 'column' as const,
+      ...columnDesign
+    };
   });
 
   return {

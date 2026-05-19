@@ -19,5 +19,6 @@ describe('normalizeBuildingInput', () => {
     expect(model.slabs[0]?.spanXm).toBe(5);
     expect(model.beams[0]?.slabContributions[0]?.slabId).toBe(model.slabs[0]?.id);
     expect(model.beams[0]?.slabContributions[0]?.tributaryWidthM).toBe(2.5);
+    expect(model.columns[0]?.id).toBe('column-1');
   });
 });

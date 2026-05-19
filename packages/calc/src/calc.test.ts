@@ -98,6 +98,12 @@ describe('motor de calculo - cargas', () => {
   it('calcula qu por losa y distribuye a vigas/columnas', () => {
     const loads = calculateLoads(baseInput);
     expect(loads.slabs[0]?.qu).toBeCloseTo(10.76, 6);
+    expect(loads.slabs[0]?.elementId).toBe('slab-1');
+    expect(loads.slabs[0]?.elementType).toBe('slab');
+    expect(loads.beams[0]?.elementId).toBe('beam-1');
+    expect(loads.beams[0]?.elementType).toBe('beam');
+    expect(loads.columns[0]?.elementId).toBe('column-1');
+    expect(loads.columns[0]?.elementType).toBe('column');
     expect(loads.beamLineLoadsKnm.length).toBe(4);
     expect(loads.columnAxialLoadsKn.every((value) => value > 0)).toBe(true);
   });
@@ -109,7 +115,9 @@ describe('motor de calculo - cargas', () => {
     const quA = loads.slabs[0]?.qu ?? 0;
     const quB = loads.slabs[1]?.qu ?? 0;
     const expectedLine = quA * 2 + quB * 1.5 + 0.25 * 0.5 * 24;
-    expect(loads.beamLineLoadsKnm[0]).toBeCloseTo(expectedLine, 2);
+    expect(loads.beams[0]?.lineLoadKnm).toBeCloseTo(expectedLine, 2);
+    expect(loads.beams[0]?.elementId).toBe('beam-shared');
+    expect(loads.beamLineLoadsKnm[0]).toBeCloseTo(loads.beams[0]?.lineLoadKnm ?? 0, 8);
   });
 });
 
@@ -117,8 +125,11 @@ describe('motor de calculo - solicitaciones', () => {
   it('calcula Mu por losa (luz corta) y vigas', () => {
     const demands = calculateDemands(baseInput);
     expect(demands.slabs[0]?.MuKnmPerM).toBeCloseTo(21.52, 2);
+    expect(demands.slabs[0]?.elementId).toBe('slab-1');
+    expect(demands.beams[0]?.elementId).toBe('beam-1');
     expect(demands.beams[0].MuKnm).toBeGreaterThan(0);
     expect(demands.beams[0].VuKn).toBeGreaterThan(0);
+    expect(demands.columns[0]?.elementId).toBe('column-1');
     expect(demands.columns[0].PuKn).toBeGreaterThan(0);
     expect(demands.columns[0].MuKnm).toBe(0);
   });
@@ -127,9 +138,12 @@ describe('motor de calculo - solicitaciones', () => {
 describe('motor de calculo - dimensionamiento', () => {
   it('aplica cuantias minimas, chequeo de corte y reglas de columnas', () => {
     const design = calculateDesign(baseInput);
-    expect(design.slabs[0].rhoUsed).toBeGreaterThanOrEqual(design.slabs[0].rhoMin);
+    expect(design.slabs[0].elementId).toBe('slab-1');
+    expect(design.slabs[0]?.rhoUsed).toBeGreaterThanOrEqual(design.slabs[0]?.rhoMin ?? 0);
+    expect(design.beams[0].elementId).toBe('beam-1');
     expect(typeof design.beams[0].shear.needsStirrups).toBe('boolean');
     expect(design.beams[0].shear.sMaxMm).toBeLessThanOrEqual(600);
+    expect(design.columns[0].elementId).toBe('column-1');
     expect(design.columns[0].rhoGeomMin).toBe(0.01);
     expect(design.columns[0].minBars).toBe(4);
     expect(design.columns[0].interactionChecked).toBe(false);

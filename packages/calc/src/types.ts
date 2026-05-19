@@ -5,6 +5,15 @@ export interface MaterialProps {
   phiShear: number;
 }
 
+export type ElementType = 'slab' | 'beam' | 'column';
+
+export interface ElementRef<TType extends ElementType = ElementType> {
+  elementId: string;
+  elementType: TType;
+}
+
+export type StructuralElementType = 'beam' | 'column' | 'slab';
+
 export interface SlabInput {
   id: string;
   spanXm: number;
@@ -14,6 +23,8 @@ export interface SlabInput {
   deadLoadKnm2: number;
   liveLoadKnm2: number;
   loadTypologyCode: string;
+  /** Polígono en planta (m) para visualización 3D. */
+  points?: Array<{ x: number; y: number }>;
 }
 
 export interface BeamSlabContribution {
@@ -28,9 +39,16 @@ export interface BeamInput {
   depthM: number;
   slabContributions: BeamSlabContribution[];
   selfWeightKnm?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
 }
 
 export interface ColumnInput {
+  id?: string;
+  cx?: number;
+  cy?: number;
   widthM: number;
   depthM: number;
   floors: number;
@@ -47,33 +65,55 @@ export interface BuildingInput {
 }
 
 export interface SlabLoadBreakdown {
+  /** Compat legacy: conservar `id` para consumidores antiguos. */
   id: string;
+  elementId: string;
+  elementType: 'slab';
   D: number;
   L: number;
   qu: number;
 }
 
+export interface BeamLoadBreakdown extends ElementRef<'beam'> {
+  lineLoadKnm: number;
+}
+
+export interface ColumnLoadBreakdown extends ElementRef<'column'> {
+  axialLoadKn: number;
+}
+
 export interface LoadResult {
   slabs: SlabLoadBreakdown[];
+  beams: BeamLoadBreakdown[];
+  columns: ColumnLoadBreakdown[];
+  /** Compat legacy: array por índice (mismo orden de `beams`). */
   beamLineLoadsKnm: number[];
+  /** Compat legacy: array por índice (mismo orden de `columns`). */
   columnAxialLoadsKn: number[];
 }
 
 export interface SlabDemandBreakdown {
+  /** Compat legacy: conservar `id` para consumidores antiguos. */
   id: string;
+  elementId: string;
+  elementType: 'slab';
   MuKnmPerM: number;
+}
+
+export interface BeamDemandBreakdown extends ElementRef<'beam'> {
+  MuKnm: number;
+  VuKn: number;
+}
+
+export interface ColumnDemandBreakdown extends ElementRef<'column'> {
+  PuKn: number;
+  MuKnm: number;
 }
 
 export interface DemandResult {
   slabs: SlabDemandBreakdown[];
-  beams: Array<{
-    MuKnm: number;
-    VuKn: number;
-  }>;
-  columns: Array<{
-    PuKn: number;
-    MuKnm: number;
-  }>;
+  beams: BeamDemandBreakdown[];
+  columns: ColumnDemandBreakdown[];
 }
 
 export interface FlexureDesignResult {
@@ -96,11 +136,17 @@ export interface ColumnDesignResult {
   interactionChecked: boolean;
 }
 
+export interface SlabDesignBreakdown extends ElementRef<'slab'>, FlexureDesignResult {}
+
+export interface BeamDesignBreakdown extends ElementRef<'beam'> {
+  flexion: FlexureDesignResult;
+  shear: ShearDesignResult;
+}
+
+export interface ColumnDesignBreakdown extends ElementRef<'column'>, ColumnDesignResult {}
+
 export interface DesignResult {
-  slabs: FlexureDesignResult[];
-  beams: Array<{
-    flexion: FlexureDesignResult;
-    shear: ShearDesignResult;
-  }>;
-  columns: ColumnDesignResult[];
+  slabs: SlabDesignBreakdown[];
+  beams: BeamDesignBreakdown[];
+  columns: ColumnDesignBreakdown[];
 }

@@ -8,6 +8,8 @@ import {
   normalizeBuildingInput
 } from '@nodouno/calc';
 import {
+  calculationsSnapshotSchema,
+  dimensioningSnapshotSchema,
   normalizeProjectSpecs,
   normalizeProjectStatus,
   projectStatusSchema
@@ -255,9 +257,10 @@ export const appRouter = t.router({
         const model = normalizeBuildingInput(input.simplifiedModel);
         const loads = calculateLoads(model);
         const demands = calculateDemands(model);
-        const dimensioning = calculateDesign(model);
+        const calculations = calculationsSnapshotSchema.parse({ loads, demands });
+        const dimensioning = dimensioningSnapshotSchema.parse(calculateDesign(model));
         return {
-          calculations: { loads, demands },
+          calculations,
           dimensioning
         };
       })

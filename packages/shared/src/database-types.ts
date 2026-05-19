@@ -1,5 +1,6 @@
 import type { ProjectSpecs } from './specs';
 import type { ProjectStatus } from './project-status';
+import type { CalculationsSnapshot, DimensioningSnapshot } from './schemas';
 
 /**
  * Fila `projects` alineada con Supabase.
@@ -12,8 +13,8 @@ export type ProjectsRow = {
   status: ProjectStatus | string;
   drawing_data: unknown;
   simplified_model: unknown;
-  calculations: unknown;
-  dimensioning: unknown;
+  calculations: CalculationsSnapshot | Record<string, unknown> | null;
+  dimensioning: DimensioningSnapshot | Record<string, unknown> | null;
   specs: ProjectSpecs | null;
   created_at?: string;
   updated_at?: string;
