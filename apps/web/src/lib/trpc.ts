@@ -20,11 +20,12 @@ export function createTrpcClient(getAccessToken: () => Promise<string | null>) {
   const base = getPublicApiUrl();
   if (!base) return null;
   return createTRPCProxyClient<AppRouter>({
-    transformer: superjson,
     links: [
       // httpLink: queries GET, mutations POST (compatible con IIS/Azure; httpBatchLink solo POST).
+      // tRPC v11: el transformer va en el link, no en la raíz del cliente.
       httpLink({
         url: `${base}/trpc`,
+        transformer: superjson,
         async headers() {
           const token = await getAccessToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
