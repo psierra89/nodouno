@@ -45,31 +45,22 @@ jobs:
           <?xml version="1.0" encoding="utf-8"?>
           <configuration>
             <system.webServer>
-              <webDAV>
-                <authoring enabled="false" />
-              </webDAV>
               <modules runAllManagedModulesForAllRequests="true">
                 <remove name="WebDAVModule" />
               </modules>
               <handlers>
                 <remove name="WebDAV" />
-                <remove name="TRACEVerbHandler" />
-                <add name="iisnode" path="server.js" verb="*" modules="iisnode" resourceType="Unspecified" requireAccess="Script" />
+                <add name="iisnode" path="server.js" verb="*" modules="iisnode" />
               </handlers>
               <rewrite>
                 <rules>
                   <rule name="DynamicContent">
-                    <match url="/*" />
+                    <match url=".*" />
                     <action type="Rewrite" url="server.js" />
                   </rule>
                 </rules>
               </rewrite>
-              <security>
-                <requestFiltering>
-                  <verbs allowUnlisted="true" />
-                </requestFiltering>
-              </security>
-              <iisnode watchedFiles="web.config;*.js" node_env="production" />
+              <iisnode watchedFiles="web.config;*.js" />
             </system.webServer>
           </configuration>
           EOF
