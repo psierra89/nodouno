@@ -47,6 +47,7 @@ jobs:
             "name": "nodouno-api-runtime",
             "private": true,
             "version": "1.0.0",
+            "type": "commonjs",
             "main": "server.js",
             "engines": { "node": ">=22" }
           }
