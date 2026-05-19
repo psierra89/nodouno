@@ -230,46 +230,62 @@ import IconButton from '../components/IconButton.astro';
       </div>
     </section>
 
-    <section id="step-panel-3" data-step-panel="3" class="hidden px-22 py-31">
-      <div class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
-        <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Cargas por losa (CIRSOC 101)</h3>
-        <p class="mt-11 text-slate-mist">
-          Asigne tipología y carga muerta adicional por cada losa del dibujo. Luego prepare el modelo estructural para el cálculo.
-        </p>
-        <p id="step3-validation" class="mt-11 hidden rounded-3xl border border-desert-sienna bg-desert-sienna/10 px-16 py-13 text-body-sm text-desert-sienna" role="alert"></p>
-        <div id="slab-loads-list" class="mt-16 grid gap-11"></div>
-        <form id="loads-form" class="hidden mt-16 grid gap-11 sm:grid-cols-2">
-          <label class="flex flex-col gap-11">
-            <span class="font-bold">Luz X manual (m)</span>
-            <input id="span-x" type="number" min="2" step="0.1" value="5" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
-          </label>
-          <label class="flex flex-col gap-11">
-            <span class="font-bold">Luz Y manual (m)</span>
-            <input id="span-y" type="number" min="2" step="0.1" value="4" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
-          </label>
-          <label class="flex flex-col gap-11">
-            <span class="font-bold">Espesor losa (m)</span>
-            <input id="slab-thickness" type="number" min="0.1" step="0.01" value="0.2" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
-          </label>
-          <label class="flex flex-col gap-11">
-            <span class="font-bold">Carga viva (kN/m2)</span>
-            <input id="live-load" type="number" min="0" step="0.1" value="2" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
-          </label>
-          <label class="flex flex-col gap-11 sm:col-span-2">
-            <span class="font-bold">Carga muerta adicional (kN/m2)</span>
-            <input id="dead-load" type="number" min="0" step="0.1" value="1.5" class="rounded-full border border-obsidian px-22 pt-15 pb-16" />
-          </label>
-        </form>
-        <div class="mt-16 flex flex-wrap gap-11">
-          <IconButton id="build-model-btn" variant="primary" icon="boxes" label="Preparar modelo estructural" />
+    <section id="step-panel-3" data-step-panel="3" class="hidden flex flex-col" style="min-height: calc(100vh - 130px);">
+      <div
+        id="loads-shell"
+        class="grid min-h-0 flex-1"
+        style="grid-template-columns: minmax(0, 1fr) 320px;"
+      >
+        <div class="relative min-h-[360px] bg-[#fafafa]">
+          <canvas
+            id="loads-canvas"
+            tabindex="0"
+            class="absolute inset-0 block h-full w-full outline-none"
+            aria-label="Planta: seleccionar losas para cargas"
+          ></canvas>
+          <div class="pointer-events-none absolute left-22 right-22 bottom-16 flex flex-wrap items-center justify-end gap-11 text-body-sm">
+            <span id="loads-hud-status" class="pointer-events-none rounded-full border border-obsidian/30 bg-canvas-white/95 px-16 pt-13 pb-13 text-slate-mist">
+              Seleccione una losa.
+            </span>
+            <div class="pointer-events-auto flex flex-wrap items-center gap-11">
+              <IconButton id="loads-fit" variant="ghost" size="sm" icon="maximize" label="Encajar vista" />
+              <IconButton id="loads-zoom-in" variant="ghost" size="sm" icon="zoom-in" label="Acercar" />
+              <IconButton id="loads-zoom-out" variant="ghost" size="sm" icon="zoom-out" label="Alejar" />
+            </div>
+          </div>
         </div>
-        <pre id="model-output" class="mt-16 overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
+        <aside class="flex flex-col gap-11 overflow-y-auto border-l border-obsidian/30 bg-canvas-white p-22" aria-label="Cargas por losa">
+          <div>
+            <h3 class="text-subheading leading-subheading tracking-subheading">Paso 3 · Cargas</h3>
+            <p class="mt-8 text-slate-mist">
+              Seleccione una losa en planta o en la lista. Solo se asignan cargas (CIRSOC 101); la geometría se define en el paso 2.
+            </p>
+          </div>
+          <p id="step3-validation" class="hidden rounded-3xl border border-desert-sienna bg-desert-sienna/10 px-16 py-13 text-body-sm text-desert-sienna" role="alert"></p>
+          <p id="step3-no-slabs" class="hidden text-slate-mist">
+            No hay losas en el dibujo. Vuelva al paso 2 y dibuje al menos una losa.
+          </p>
+          <div id="step3-loads-panel" class="hidden grid gap-11">
+            <label class="grid gap-8">
+              <span class="text-body-sm font-bold">Losa</span>
+              <select id="step3-slab-picker" class="cad-input"></select>
+            </label>
+            <div id="step3-load-fields" class="grid gap-11"></div>
+            <p id="step3-load-preview" class="text-body-sm text-slate-mist tabular-nums"></p>
+          </div>
+          <div class="mt-auto grid gap-11 pt-11">
+            <IconButton id="build-model-btn" variant="primary" icon="boxes" label="Preparar modelo estructural" />
+          </div>
+        </aside>
+      </div>
+      <div class="border-t border-obsidian/20 px-22 py-22">
+        <pre id="model-output" class="max-h-[200px] overflow-auto rounded-3xl border border-obsidian p-16 text-body-sm text-slate-mist">Pendiente.</pre>
         <div class="mt-16">
           <h4 class="text-heading-sm leading-heading-sm tracking-heading-sm">Vista 3D</h4>
           <p class="mt-11 text-slate-mist">Orbita con arrastre, zoom con la rueda.</p>
           <div
             id="model-3d-container"
-            class="relative mt-11 h-[min(40vh,320px)] min-h-[220px] w-full overflow-hidden rounded-3xl border border-obsidian bg-[#f8f8f8]"
+            class="relative mt-11 h-[min(32vh,280px)] min-h-[200px] w-full overflow-hidden rounded-3xl border border-obsidian bg-[#f8f8f8]"
           ></div>
         </div>
       </div>
@@ -323,7 +339,10 @@ import IconButton from '../components/IconButton.astro';
     @media (max-width: 1023px) {
       #cad-shell { grid-template-columns: 56px minmax(0, 1fr); }
       #cad-shell aside[aria-label="Propiedades"] { display: none; }
+      #loads-shell { grid-template-columns: minmax(0, 1fr); }
+      #loads-shell aside[aria-label="Cargas por losa"] { max-height: 40vh; border-left: none; border-top: 1px solid rgba(0, 13, 16, 0.2); }
     }
+    #loads-canvas { touch-action: none; cursor: default; }
   </style>
 
   <script>
@@ -366,8 +385,17 @@ import IconButton from '../components/IconButton.astro';
     const modelOutput = document.querySelector<HTMLElement>('#model-output');
     const calcOutput = document.querySelector<HTMLElement>('#calc-output');
     const model3dContainer = document.querySelector<HTMLElement>('#model-3d-container');
-    const slabLoadsList = document.querySelector<HTMLElement>('#slab-loads-list');
+    const loadsCanvas = document.querySelector<HTMLCanvasElement>('#loads-canvas');
+    const loadsHudStatus = document.querySelector<HTMLElement>('#loads-hud-status');
+    const loadsFitBtn = document.querySelector<HTMLButtonElement>('#loads-fit');
+    const loadsZoomInBtn = document.querySelector<HTMLButtonElement>('#loads-zoom-in');
+    const loadsZoomOutBtn = document.querySelector<HTMLButtonElement>('#loads-zoom-out');
     const step3Validation = document.querySelector<HTMLElement>('#step3-validation');
+    const step3NoSlabs = document.querySelector<HTMLElement>('#step3-no-slabs');
+    const step3LoadsPanel = document.querySelector<HTMLElement>('#step3-loads-panel');
+    const step3SlabPicker = document.querySelector<HTMLSelectElement>('#step3-slab-picker');
+    const step3LoadFields = document.querySelector<HTMLElement>('#step3-load-fields');
+    const step3LoadPreview = document.querySelector<HTMLElement>('#step3-load-preview');
     const helpToggle = document.querySelector<HTMLButtonElement>('#cad-help-toggle');
     const helpPanel = document.querySelector<HTMLElement>('#cad-help-panel');
     const saveDrawingBtn = document.querySelector<HTMLButtonElement>('#save-drawing-btn');
@@ -413,6 +441,7 @@ import IconButton from '../components/IconButton.astro';
     let activeTool: ToolKind = 'select';
     let lastPropertiesHudKey = '';
     let editor: Editor2DHandle | null = null;
+    let loadsEditor: Editor2DHandle | null = null;
     let drawingDirty = false;
     let simplifiedModel: BuildingInput | null = null;
     let lastResults: Record<string, unknown> | null = null;
@@ -469,7 +498,7 @@ import IconButton from '../components/IconButton.astro';
         requestAnimationFrame(() => editor!.fit());
       }
       if (step === 3) {
-        syncStep3SlabList();
+        enterStep3();
       }
     };
 
@@ -519,6 +548,185 @@ import IconButton from '../components/IconButton.astro';
       state.entities.slabs[idx] = updater(state.entities.slabs[idx]!);
       editor.setState(state, { commit: true });
       drawingDirty = true;
+      if (loadsEditor && currentStep === 3) {
+        syncLoadsEditorFromMain();
+        renderStep3Panel();
+      }
+    };
+
+    let step3PickerSync = false;
+
+    const slabDisplayName = (slab: SlabEntity, index: number) => {
+      const custom = slab.props?.name;
+      if (typeof custom === 'string' && custom.trim()) return custom.trim();
+      return `Losa ${index + 1}`;
+    };
+
+    const getSelectedStep3SlabId = (): string | null => {
+      const sel = loadsEditor?.getSelection() ?? [];
+      const slabRef = sel.find((r) => r.type === 'slab');
+      return slabRef?.id ?? null;
+    };
+
+    const syncLoadsEditorFromMain = () => {
+      if (!loadsEditor || !editor) return;
+      loadsEditor.setState(structuredClone(editor.getState()), { commit: false });
+    };
+
+    const ensureLoadsEditor = () => {
+      if (loadsEditor || !loadsCanvas || !editor) return;
+      loadsEditor = mountEditor2d(loadsCanvas, {
+        interactionMode: 'slabLoads',
+        initialState: structuredClone(editor.getState()),
+        onSelectionChange: () => {
+          if (step3PickerSync) return;
+          renderStep3Panel();
+        },
+        onHud: (hud) => {
+          if (loadsHudStatus) loadsHudStatus.textContent = hud.status;
+        }
+      });
+      loadsEditor.fit();
+    };
+
+    const enterStep3 = () => {
+      ensureLoadsEditor();
+      syncLoadsEditorFromMain();
+      requestAnimationFrame(() => {
+        loadsEditor?.fit();
+        const slabs = editor?.getState().entities.slabs ?? [];
+        if (slabs[0]) {
+          loadsEditor?.setSelection([{ type: 'slab', id: slabs[0].id }]);
+        } else {
+          loadsEditor?.clearSelection();
+        }
+        renderStep3Panel();
+      });
+    };
+
+    const renderStep3LoadFields = (slab: SlabEntity) => {
+      if (!step3LoadFields) return;
+      step3LoadFields.innerHTML = '';
+      const props = readSlabProps(slab);
+
+      const typologyLabel = document.createElement('label');
+      typologyLabel.className = 'grid gap-8';
+      typologyLabel.innerHTML = '<span class="text-body-sm font-bold">Tipología CIRSOC 101</span>';
+      const typologySelect = document.createElement('select');
+      typologySelect.className = 'cad-input';
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '— Seleccionar —';
+      typologySelect.appendChild(emptyOpt);
+      for (const t of CIRSOC_101_LOAD_TYPOLOGIES) {
+        const opt = document.createElement('option');
+        opt.value = t.code;
+        opt.textContent = `${t.label} (L=${t.liveLoadKnm2 ?? 'manual'} kN/m²)`;
+        typologySelect.appendChild(opt);
+      }
+      typologySelect.value = props.loadTypologyCode ?? '';
+      typologySelect.addEventListener('change', () => {
+        const code = typologySelect.value as LoadTypologyCode | '';
+        patchSlabInDrawing(slab.id, (s) => ({
+          ...s,
+          props: { ...s.props, loadTypologyCode: code || undefined }
+        }));
+      });
+      typologyLabel.appendChild(typologySelect);
+      step3LoadFields.appendChild(typologyLabel);
+
+      const deadLabel = document.createElement('label');
+      deadLabel.className = 'grid gap-8';
+      deadLabel.innerHTML = '<span class="text-body-sm font-bold">Muerta adicional (kN/m²)</span>';
+      const deadInput = document.createElement('input');
+      deadInput.type = 'number';
+      deadInput.min = '0';
+      deadInput.step = '0.1';
+      deadInput.className = 'cad-input';
+      deadInput.value = String(props.deadLoadKnm2);
+      deadInput.addEventListener('change', () => {
+        patchSlabInDrawing(slab.id, (s) => ({
+          ...s,
+          props: { ...s.props, deadLoadKnm2: Number(deadInput.value) || DEFAULT_SLAB_DEAD }
+        }));
+      });
+      deadLabel.appendChild(deadInput);
+      step3LoadFields.appendChild(deadLabel);
+
+      if (props.loadTypologyCode === 'CUSTOM') {
+        const liveWrap = document.createElement('label');
+        liveWrap.className = 'grid gap-8';
+        liveWrap.innerHTML = '<span class="text-body-sm font-bold">L viva manual (kN/m²)</span>';
+        const liveInput = document.createElement('input');
+        liveInput.type = 'number';
+        liveInput.min = '0';
+        liveInput.step = '0.1';
+        liveInput.className = 'cad-input';
+        liveInput.value = String(props.liveLoadOverrideKnm2 ?? 2);
+        liveInput.addEventListener('change', () => {
+          patchSlabInDrawing(slab.id, (s) => ({
+            ...s,
+            props: { ...s.props, liveLoadOverrideKnm2: Number(liveInput.value) }
+          }));
+        });
+        liveWrap.appendChild(liveInput);
+        step3LoadFields.appendChild(liveWrap);
+      }
+
+      const preview = slabPreviewLoads(slab);
+      if (step3LoadPreview) {
+        step3LoadPreview.textContent = preview
+          ? `Vista previa: D=${preview.D.toFixed(2)} · L=${preview.L.toFixed(2)} · qu=${preview.qu.toFixed(2)} kN/m²`
+          : 'Complete tipología para ver D, L y qu.';
+      }
+    };
+
+    const renderStep3Panel = () => {
+      if (!editor) return;
+      const slabs = editor.getState().entities.slabs;
+      showStep3Validation(validateStep3());
+
+      if (slabs.length === 0) {
+        step3NoSlabs?.classList.remove('hidden');
+        step3LoadsPanel?.classList.add('hidden');
+        if (step3SlabPicker) step3SlabPicker.innerHTML = '';
+        if (step3LoadPreview) step3LoadPreview.textContent = '';
+        return;
+      }
+
+      step3NoSlabs?.classList.add('hidden');
+      step3LoadsPanel?.classList.remove('hidden');
+
+      let selectedId = getSelectedStep3SlabId();
+      if (!selectedId || !slabs.some((s) => s.id === selectedId)) {
+        selectedId = slabs[0]!.id;
+        loadsEditor?.setSelection([{ type: 'slab', id: selectedId }]);
+      }
+
+      if (step3SlabPicker) {
+        step3PickerSync = true;
+        step3SlabPicker.innerHTML = '';
+        slabs.forEach((slab, i) => {
+          const opt = document.createElement('option');
+          opt.value = slab.id;
+          opt.textContent = `${slabDisplayName(slab, i)} — ${polygonArea(slab.points).toFixed(1)} m²`;
+          step3SlabPicker.appendChild(opt);
+        });
+        step3SlabPicker.value = selectedId;
+        if (!step3SlabPicker.dataset.bound) {
+          step3SlabPicker.dataset.bound = '1';
+          step3SlabPicker.addEventListener('change', () => {
+            const id = step3SlabPicker!.value;
+            if (!id) return;
+            loadsEditor?.setSelection([{ type: 'slab', id }]);
+            renderStep3Panel();
+          });
+        }
+        step3PickerSync = false;
+      }
+
+      const slab = slabs.find((s) => s.id === selectedId);
+      if (slab) renderStep3LoadFields(slab);
     };
 
     const slabPreviewLoads = (slab: SlabEntity) => {
@@ -557,140 +765,6 @@ import IconButton from '../components/IconButton.astro';
       }
       step3Validation.classList.remove('hidden');
       step3Validation.textContent = messages.join(' ');
-    };
-
-    const syncStep3SlabList = () => {
-      if (!slabLoadsList || !editor) return;
-      const slabs = editor.getState().entities.slabs;
-      slabLoadsList.innerHTML = '';
-      if (slabs.length === 0) {
-        slabLoadsList.innerHTML =
-          '<p class="text-slate-mist">No hay losas en el dibujo. Vuelva al paso 2 y dibuje al menos una losa.</p>';
-        showStep3Validation(['Dibuje al menos una losa en el paso 2.']);
-        return;
-      }
-      showStep3Validation(validateStep3());
-
-      for (const slab of slabs) {
-        const props = readSlabProps(slab);
-        const area = polygonArea(slab.points);
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
-        for (const p of slab.points) {
-          if (p.x < minX) minX = p.x;
-          if (p.y < minY) minY = p.y;
-          if (p.x > maxX) maxX = p.x;
-          if (p.y > maxY) maxY = p.y;
-        }
-        const spanX = Math.max(0.1, maxX - minX);
-        const spanY = Math.max(0.1, maxY - minY);
-        const preview = slabPreviewLoads(slab);
-
-        const card = document.createElement('article');
-        card.className = 'rounded-3xl border border-obsidian/40 p-16 grid gap-11 sm:grid-cols-2';
-        card.dataset.slabId = slab.id;
-
-        const title = document.createElement('h4');
-        title.className = 'text-body-sm font-bold sm:col-span-2';
-        title.textContent = `Losa ${slab.id.slice(-4)} · ${area.toFixed(2)} m² · luces ${spanX.toFixed(2)}×${spanY.toFixed(2)} m`;
-        card.appendChild(title);
-
-        const typologyLabel = document.createElement('label');
-        typologyLabel.className = 'grid gap-8';
-        typologyLabel.innerHTML = '<span class="text-body-sm font-bold">Tipología CIRSOC 101</span>';
-        const typologySelect = document.createElement('select');
-        typologySelect.className = 'cad-input';
-        const emptyOpt = document.createElement('option');
-        emptyOpt.value = '';
-        emptyOpt.textContent = '— Seleccionar —';
-        typologySelect.appendChild(emptyOpt);
-        for (const t of CIRSOC_101_LOAD_TYPOLOGIES) {
-          const opt = document.createElement('option');
-          opt.value = t.code;
-          opt.textContent = `${t.label} (L=${t.liveLoadKnm2 ?? 'manual'} kN/m²)`;
-          typologySelect.appendChild(opt);
-        }
-        typologySelect.value = props.loadTypologyCode ?? '';
-        typologySelect.addEventListener('change', () => {
-          const code = typologySelect.value as LoadTypologyCode | '';
-          patchSlabInDrawing(slab.id, (s) => ({
-            ...s,
-            props: { ...s.props, loadTypologyCode: code || undefined }
-          }));
-          syncStep3SlabList();
-        });
-        typologyLabel.appendChild(typologySelect);
-        card.appendChild(typologyLabel);
-
-        const deadLabel = document.createElement('label');
-        deadLabel.className = 'grid gap-8';
-        deadLabel.innerHTML = '<span class="text-body-sm font-bold">Muerta adicional (kN/m²)</span>';
-        const deadInput = document.createElement('input');
-        deadInput.type = 'number';
-        deadInput.min = '0';
-        deadInput.step = '0.1';
-        deadInput.className = 'cad-input';
-        deadInput.value = String(props.deadLoadKnm2);
-        deadInput.addEventListener('change', () => {
-          patchSlabInDrawing(slab.id, (s) => ({
-            ...s,
-            props: { ...s.props, deadLoadKnm2: Number(deadInput.value) || DEFAULT_SLAB_DEAD }
-          }));
-          syncStep3SlabList();
-        });
-        deadLabel.appendChild(deadInput);
-        card.appendChild(deadLabel);
-
-        const thicknessLabel = document.createElement('label');
-        thicknessLabel.className = 'grid gap-8';
-        thicknessLabel.innerHTML = '<span class="text-body-sm font-bold">Espesor (m)</span>';
-        const thicknessInput = document.createElement('input');
-        thicknessInput.type = 'number';
-        thicknessInput.min = '0.05';
-        thicknessInput.step = '0.01';
-        thicknessInput.className = 'cad-input';
-        thicknessInput.value = String(slab.thicknessM);
-        thicknessInput.addEventListener('change', () => {
-          const t = Number(thicknessInput.value);
-          if (!Number.isFinite(t) || t <= 0) return;
-          patchSlabInDrawing(slab.id, (s) => ({ ...s, thicknessM: t }));
-          syncStep3SlabList();
-        });
-        thicknessLabel.appendChild(thicknessInput);
-        card.appendChild(thicknessLabel);
-
-        const liveOverrideWrap = document.createElement('label');
-        liveOverrideWrap.className = `grid gap-8 ${props.loadTypologyCode === 'CUSTOM' ? '' : 'hidden'}`;
-        liveOverrideWrap.innerHTML = '<span class="text-body-sm font-bold">L viva manual (kN/m²)</span>';
-        const liveOverrideInput = document.createElement('input');
-        liveOverrideInput.type = 'number';
-        liveOverrideInput.min = '0';
-        liveOverrideInput.step = '0.1';
-        liveOverrideInput.className = 'cad-input';
-        liveOverrideInput.value = String(props.liveLoadOverrideKnm2 ?? '');
-        liveOverrideInput.addEventListener('change', () => {
-          patchSlabInDrawing(slab.id, (s) => ({
-            ...s,
-            props: { ...s.props, liveLoadOverrideKnm2: Number(liveOverrideInput.value) }
-          }));
-          syncStep3SlabList();
-        });
-        liveOverrideWrap.appendChild(liveOverrideInput);
-        card.appendChild(liveOverrideWrap);
-
-        const previewEl = document.createElement('p');
-        previewEl.className = 'text-body-sm text-slate-mist sm:col-span-2 tabular-nums';
-        if (preview) {
-          previewEl.textContent = `Vista previa: D=${preview.D.toFixed(2)} · L=${preview.L.toFixed(2)} · qu=${preview.qu.toFixed(2)} kN/m²`;
-        } else {
-          previewEl.textContent = 'Complete tipología para ver D, L y qu.';
-        }
-        card.appendChild(previewEl);
-
-        slabLoadsList.appendChild(card);
-      }
     };
 
     const updateActiveToolButton = (tool: ToolKind) => {
@@ -748,7 +822,8 @@ import IconButton from '../components/IconButton.astro';
       updateActiveToolButton(hud.tool);
       renderMeasure(hud.measure);
       activeTool = hud.tool;
-      const hudKey = `${hud.tool}:${hud.selectionCount}`;
+      const selKey = hud.selectionIds.join(',');
+      const hudKey = `${hud.tool}:${hud.selectionCount}:${selKey}`;
       if (hudKey !== lastPropertiesHudKey) {
         lastPropertiesHudKey = hudKey;
         renderPropertiesPanel(hud.tool);
@@ -888,66 +963,11 @@ import IconButton from '../components/IconButton.astro';
           )
         );
       } else if (entity.type === 'slab') {
-        const slabProps = readSlabProps(entity);
         propSelectionFields.appendChild(
           numberInput('Espesor (m)', entity.thicknessM, 0.01, (v) =>
             editor!.updateSelectionProps((e) => (e.type === 'slab' ? { ...e, thicknessM: v } : e))
           )
         );
-        const typologyLabel = document.createElement('label');
-        typologyLabel.className = 'grid gap-8';
-        typologyLabel.innerHTML = '<span class="text-body-sm font-bold">Tipología CIRSOC 101</span>';
-        const typologySelect = document.createElement('select');
-        typologySelect.className = 'cad-input';
-        const emptyOpt = document.createElement('option');
-        emptyOpt.value = '';
-        emptyOpt.textContent = '— Seleccionar —';
-        typologySelect.appendChild(emptyOpt);
-        for (const t of CIRSOC_101_LOAD_TYPOLOGIES) {
-          const opt = document.createElement('option');
-          opt.value = t.code;
-          opt.textContent = t.label;
-          typologySelect.appendChild(opt);
-        }
-        typologySelect.value = slabProps.loadTypologyCode ?? '';
-        typologySelect.addEventListener('change', () => {
-          const code = typologySelect.value as LoadTypologyCode | '';
-          editor!.updateSelectionProps((e) =>
-            e.type === 'slab'
-              ? { ...e, props: { ...e.props, loadTypologyCode: code || undefined } }
-              : e
-          );
-          renderPropertiesPanel('select');
-        });
-        typologyLabel.appendChild(typologySelect);
-        propSelectionFields.appendChild(typologyLabel);
-
-        propSelectionFields.appendChild(
-          numberInput('Muerta adicional (kN/m²)', slabProps.deadLoadKnm2, 0.1, (v) =>
-            editor!.updateSelectionProps((e) =>
-              e.type === 'slab' ? { ...e, props: { ...e.props, deadLoadKnm2: v } } : e
-            )
-          )
-        );
-
-        const livePreview = document.createElement('p');
-        livePreview.className = 'text-slate-mist tabular-nums';
-        const L = liveLoadForTypology(slabProps.loadTypologyCode, slabProps.liveLoadOverrideKnm2);
-        livePreview.textContent =
-          L !== null ? `Carga viva L = ${L.toFixed(2)} kN/m²` : 'Seleccione tipología para ver L.';
-
-        if (slabProps.loadTypologyCode === 'CUSTOM') {
-          propSelectionFields.appendChild(
-            numberInput('L viva manual (kN/m²)', slabProps.liveLoadOverrideKnm2 ?? 2, 0.1, (v) =>
-              editor!.updateSelectionProps((e) =>
-                e.type === 'slab'
-                  ? { ...e, props: { ...e.props, liveLoadOverrideKnm2: v } }
-                  : e
-              )
-            )
-          );
-        }
-        propSelectionFields.appendChild(livePreview);
 
         const info = document.createElement('p');
         info.className = 'text-slate-mist';
@@ -1045,7 +1065,10 @@ import IconButton from '../components/IconButton.astro';
         onChange: () => {
           drawingDirty = true;
           renderPropertiesPanel();
-          if (currentStep === 3) syncStep3SlabList();
+          if (currentStep === 3) {
+            syncLoadsEditorFromMain();
+            renderStep3Panel();
+          }
         },
         onHud: (hud) => {
           renderHud(hud);
@@ -1063,9 +1086,15 @@ import IconButton from '../components/IconButton.astro';
       setSpecsStatus('Sin proyecto activo.', true);
     }
 
+    loadsFitBtn?.addEventListener('click', () => loadsEditor?.fit());
+    loadsZoomInBtn?.addEventListener('click', () => loadsEditor?.zoomIn());
+    loadsZoomOutBtn?.addEventListener('click', () => loadsEditor?.zoomOut());
+
     window.addEventListener('pagehide', () => {
       viewer3d?.dispose();
       viewer3d = null;
+      loadsEditor?.dispose();
+      loadsEditor = null;
       editor?.dispose();
       editor = null;
     });

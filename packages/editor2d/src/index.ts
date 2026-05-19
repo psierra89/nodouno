@@ -27,6 +27,7 @@ import {
   entityBoundingBox,
   findEntity,
   hitTest,
+  hitTestSlab,
   polygonArea,
   removeEntity,
   round,
@@ -53,6 +54,8 @@ export interface HudInfo {
   snap: { enabled: boolean; kind: SnapKind };
   ortho: boolean;
   selectionCount: number;
+  /** IDs de entidades seleccionadas (orden estable). */
+  selectionIds: string[];
   measure: {
     lengthM?: number;
     areaM2?: number;
@@ -65,9 +68,13 @@ export interface HudInfo {
   status: string;
 }
 
+export type EditorInteractionMode = 'draw' | 'slabLoads';
+
 export interface Editor2DOptions {
   initialState?: DrawingState;
   initialTool?: ToolKind;
+  /** `slabLoads`: solo seleccion de losas, sin dibujo ni edicion geometrica. */
+  interactionMode?: EditorInteractionMode;
   /** Tipo por defecto que usa la herramienta de columna (en metros). */
   columnSection?: { widthM: number; depthM: number };
   /** Seccion por defecto de la herramienta de viga. */
@@ -76,6 +83,7 @@ export interface Editor2DOptions {
   slabThicknessM?: number;
   onChange?: (state: DrawingState) => void;
   onHud?: (hud: HudInfo) => void;
+  onSelectionChange?: (selection: EntityRef[]) => void;
 }
 
 export interface Editor2DHandle {
@@ -101,6 +109,8 @@ export interface Editor2DHandle {
   zoomOut(): void;
   getSelection(): EntityRef[];
   getSelectionEntities(): Entity[];
+  setSelection(refs: EntityRef[]): void;
+  setInteractionMode(mode: EditorInteractionMode): void;
   dispose(): void;
 }
 
@@ -153,14 +163,22 @@ export function mountEditor2d(
   let state: DrawingState = structuredClone(initial);
   let cam: CameraState = { x: 0, y: 0, zoom: 80 };
   let tool: ToolKind = options.initialTool ?? 'select';
+  let interactionMode: EditorInteractionMode = options.interactionMode ?? 'draw';
+  if (interactionMode === 'slabLoads') {
+    tool = 'select';
+  }
   const selection: Set<string> = new Set();
+  let lastSelectionKey = '';
   let hoverId: string | null = null;
   let preview: PreviewShape | null = null;
   let snapResult: SnapResult | null = null;
   let cursorWorld: { x: number; y: number } | null = null;
   let lastClientPoint: { x: number; y: number } | null = null;
   let showCrosshair = false;
-  let statusMessage = STATUS_MESSAGES[tool];
+  let statusMessage =
+    interactionMode === 'slabLoads'
+      ? 'Seleccione una losa en planta para asignar cargas.'
+      : STATUS_MESSAGES[tool];
   let dragMove: DragMoveState | null = null;
   let panActive: PanState | null = null;
   let spaceHeld = false;
@@ -274,6 +292,23 @@ export function mountEditor2d(
     return null;
   };
 
+  const pickAtPoint = (point: { x: number; y: number }, toleranceM: number): EntityRef | null => {
+    if (interactionMode === 'slabLoads') return hitTestSlab(point, state);
+    return hitTest(point, state, toleranceM);
+  };
+
+  const emitSelectionChange = () => {
+    const key = [...selection].sort().join(',');
+    if (key === lastSelectionKey) return;
+    lastSelectionKey = key;
+    const refs: EntityRef[] = [];
+    for (const id of selection) {
+      const ref = findRef(state, id);
+      if (ref) refs.push(ref);
+    }
+    options.onSelectionChange?.(refs);
+  };
+
   const emitHud = () => {
     const hud: HudInfo = {
       cursor: cursorWorld ? { x: round(cursorWorld.x, 3), y: round(cursorWorld.y, 3) } : null,
@@ -282,6 +317,7 @@ export function mountEditor2d(
       snap: { enabled: state.grid.snapEnabled, kind: snapResult?.kind ?? 'none' },
       ortho: state.grid.orthoEnabled,
       selectionCount: selection.size,
+      selectionIds: [...selection].sort(),
       measure: computeMeasure(),
       canUndo: history.canUndo(),
       canRedo: history.canRedo(),
@@ -322,6 +358,7 @@ export function mountEditor2d(
   };
 
   const setTool = (next: ToolKind) => {
+    if (interactionMode === 'slabLoads' && next !== 'select' && next !== 'pan') return;
     if (next === tool) return;
     cancelDrawingInternal();
     tool = next;
@@ -387,7 +424,8 @@ export function mountEditor2d(
       return;
     }
     if (tool === 'select') {
-      canvas.style.cursor = hoverId ? 'move' : 'default';
+      canvas.style.cursor =
+        interactionMode === 'slabLoads' ? (hoverId ? 'pointer' : 'default') : hoverId ? 'move' : 'default';
       return;
     }
     canvas.style.cursor = 'crosshair';
@@ -405,23 +443,36 @@ export function mountEditor2d(
     const point = snap.point;
 
     if (tool === 'select') {
-      const ref = hitTest(point, state, 8 / cam.zoom);
+      const ref = pickAtPoint(point, 8 / cam.zoom);
       if (ref) {
-        if (e.shiftKey) {
+        if (interactionMode === 'slabLoads') {
+          selection.clear();
+          selection.add(ref.id);
+          statusMessage = 'Losa seleccionada.';
+        } else if (e.shiftKey) {
           if (selection.has(ref.id)) selection.delete(ref.id);
           else selection.add(ref.id);
+          statusMessage = `${selection.size} elemento(s) seleccionado(s).`;
         } else if (!selection.has(ref.id)) {
           selection.clear();
           selection.add(ref.id);
+          statusMessage = `${selection.size} elemento(s) seleccionado(s).`;
         }
-        startSelectionDrag(point, e.pointerId);
-        statusMessage = `${selection.size} elemento(s) seleccionado(s).`;
+        if (interactionMode !== 'slabLoads') {
+          startSelectionDrag(point, e.pointerId);
+        }
       } else {
-        if (!e.shiftKey) selection.clear();
-        statusMessage = STATUS_MESSAGES[tool];
+        if (interactionMode === 'slabLoads') {
+          selection.clear();
+          statusMessage = 'Seleccione una losa en planta.';
+        } else {
+          if (!e.shiftKey) selection.clear();
+          statusMessage = STATUS_MESSAGES[tool];
+        }
       }
       invalidate();
       emitHud();
+      emitSelectionChange();
       return;
     }
 
@@ -498,7 +549,7 @@ export function mountEditor2d(
     }
 
     if (tool === 'select') {
-      const ref = hitTest(point, state, 8 / cam.zoom);
+      const ref = pickAtPoint(point, 8 / cam.zoom);
       const newHover = ref?.id ?? null;
       if (newHover !== hoverId) {
         hoverId = newHover;
@@ -678,6 +729,7 @@ export function mountEditor2d(
         break;
       case 'Delete':
       case 'Backspace':
+        if (interactionMode === 'slabLoads') break;
         e.preventDefault();
         deleteSelection();
         break;
@@ -870,6 +922,7 @@ export function mountEditor2d(
     selection.clear();
     invalidate();
     emitHud();
+    emitSelectionChange();
   };
 
   const selectAll = () => {
@@ -1017,6 +1070,28 @@ export function mountEditor2d(
         if (e) out.push(e);
       }
       return out;
+    },
+    setSelection: (refs) => {
+      selection.clear();
+      for (const ref of refs) {
+        if (interactionMode === 'slabLoads' && ref.type !== 'slab') continue;
+        if (findRef(state, ref.id)) selection.add(ref.id);
+      }
+      invalidate();
+      emitHud();
+      emitSelectionChange();
+    },
+    setInteractionMode: (mode) => {
+      interactionMode = mode;
+      cancelDrawingInternal();
+      tool = 'select';
+      showCrosshair = false;
+      statusMessage =
+        mode === 'slabLoads'
+          ? 'Seleccione una losa en planta para asignar cargas.'
+          : STATUS_MESSAGES.select;
+      invalidate();
+      emitHud();
     },
     dispose
   };

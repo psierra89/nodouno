@@ -121,6 +121,18 @@ export function isPointInsideEntity(point: { x: number; y: number }, entity: Ent
   return pointInPolygon(point, entity.points);
 }
 
+/** Encuentra la losa bajo el punto (de arriba hacia abajo en el orden del dibujo). */
+export function hitTestSlab(
+  point: { x: number; y: number },
+  state: DrawingState
+): EntityRef | null {
+  for (let i = state.entities.slabs.length - 1; i >= 0; i--) {
+    const s = state.entities.slabs[i];
+    if (pointInPolygon(point, s.points)) return { type: 'slab', id: s.id };
+  }
+  return null;
+}
+
 /** Encuentra la entidad mas cercana al punto (en orden columnas > vigas > losas). */
 export function hitTest(
   point: { x: number; y: number },
