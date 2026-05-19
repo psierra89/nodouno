@@ -55,9 +55,18 @@ Si `PUBLIC_API_URL` no existe, el frontend usa fallback parcial a Supabase clien
 
 ## Deploy actual
 
+### Ramas
+
+| Rama | Uso | Frontend (Vercel) | API (Azure) |
+|------|-----|-------------------|-------------|
+| `develop` | Integración y pruebas | Preview (`nodouno-git-develop-…`) | No despliega |
+| `master` | Producción estable | `https://nodouno.vercel.app` | `nodouno-api-psierra89.azurewebsites.net` |
+
+Flujo recomendado: desarrollar en `develop` → validar en preview → merge a `master` → deploy automático de web y API.
+
 ### Frontend
 - Vercel
-- URL productiva: `https://nodouno.vercel.app`
+- URL productiva: `https://nodouno.vercel.app` (rama `master`)
 - Variable obligatoria en Vercel: `PUBLIC_API_URL`
 
 ### API
@@ -66,7 +75,7 @@ Si `PUBLIC_API_URL` no existe, el frontend usa fallback parcial a Supabase clien
 - Healthcheck:
   - `https://nodouno-api-psierra89.azurewebsites.net/healthz`
   - `https://nodouno-api-psierra89.azurewebsites.net/trpc/health`
-- CI/CD: `.github/workflows/deploy-api-azure.yml` (deploy en push a `develop`)
+- CI/CD: `.github/workflows/deploy-api-azure.yml` (deploy en push a `master`)
 
 ## Variables de entorno
 
