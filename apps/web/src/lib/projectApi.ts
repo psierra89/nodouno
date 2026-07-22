@@ -298,23 +298,33 @@ export async function runServerCalc(simplifiedModel: unknown) {
   return client.calc.runPipeline.mutate({ simplifiedModel });
 }
 
+const DEFAULT_CATALOGS = {
+  regulations: [{ code: 'CIRSOC_201', name: 'CIRSOC 201', version: '2016' }],
+  steel: [{ code: 'ADN_420', description: 'Acero ADN420', fyMpa: 420 }],
+  concrete: [
+    { code: 'H25', description: 'Hormigon H25', fckMpa: 25 },
+    { code: 'H30', description: 'Hormigon H30', fckMpa: 30 },
+    { code: 'H35', description: 'Hormigon H35', fckMpa: 35 }
+  ]
+} as const;
+
 export async function listCatalogs() {
   const client = getTrpcClient();
-  if (!client) {
+  if (!client) return { ...DEFAULT_CATALOGS };
+
+  try {
+    const [regulations, steel, concrete] = await Promise.all([
+      client.catalogs.regulations.query(),
+      client.catalogs.steel.query(),
+      client.catalogs.concrete.query()
+    ]);
     return {
-      regulations: [{ code: 'CIRSOC_201', name: 'CIRSOC 201', version: '2016' }],
-      steel: [{ code: 'ADN_420', description: 'Acero ADN420', fyMpa: 420 }],
-      concrete: [
-        { code: 'H25', description: 'Hormigon H25', fckMpa: 25 },
-        { code: 'H30', description: 'Hormigon H30', fckMpa: 30 },
-        { code: 'H35', description: 'Hormigon H35', fckMpa: 35 }
-      ]
+      regulations: regulations?.length ? regulations : [...DEFAULT_CATALOGS.regulations],
+      steel: steel?.length ? steel : [...DEFAULT_CATALOGS.steel],
+      concrete: concrete?.length ? concrete : [...DEFAULT_CATALOGS.concrete]
     };
+  } catch {
+    // Catálogos ausentes o API caída no deben echar al usuario del editor.
+    return { ...DEFAULT_CATALOGS };
   }
-  const [regulations, steel, concrete] = await Promise.all([
-    client.catalogs.regulations.query(),
-    client.catalogs.steel.query(),
-    client.catalogs.concrete.query()
-  ]);
-  return { regulations, steel, concrete };
 }
