@@ -120,7 +120,6 @@ export const runPipelineResultSchema = z.object({
   dimensioning: dimensioningSnapshotSchema
 });
 
-export type ElementType = z.infer<typeof elementTypeSchema>;
 export type CalculationsSnapshot = z.infer<typeof calculationsSnapshotSchema>;
 export type DimensioningSnapshot = z.infer<typeof dimensioningSnapshotSchema>;
 export type RunPipelineResult = z.infer<typeof runPipelineResultSchema>;
