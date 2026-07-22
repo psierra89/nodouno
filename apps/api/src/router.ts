@@ -17,6 +17,7 @@ import {
   projectStatusForDb
 } from '@nodouno/shared';
 import type { TrpcContext } from './context';
+import { buildTechnicalReportPdfBase64 } from './pdfReport';
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -329,12 +330,65 @@ export const appRouter = t.router({
 
     requestPdf: t.procedure
       .use(requireUser)
-      .input(z.object({ projectId: z.string().uuid() }))
-      .mutation(() => {
-        throw new TRPCError({
-          code: 'NOT_IMPLEMENTED',
-          message: 'Export PDF pendiente de worker dedicado (ver plan Fase 5)'
+      .input(z.object({ projectId: z.string().uuid(), revisionId: z.string().uuid().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertProjectOwned(ctx, input.projectId);
+
+        const { data: projectMeta, error: projectError } = await ctx.supabaseAdmin
+          .from('projects')
+          .select('name, specs')
+          .eq('id', input.projectId)
+          .eq('user_id', ctx.userId)
+          .maybeSingle();
+        if (projectError) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: projectError.message });
+        }
+        if (!projectMeta) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Proyecto no encontrado' });
+        }
+
+        const { data: snapshot, error: snapshotError } = input.revisionId
+          ? await ctx.supabaseAdmin
+              .from('project_revisions')
+              .select('simplified_model, calculations, dimensioning')
+              .eq('id', input.revisionId)
+              .eq('project_id', input.projectId)
+              .maybeSingle()
+          : await ctx.supabaseAdmin
+              .from('projects')
+              .select('simplified_model, calculations, dimensioning')
+              .eq('id', input.projectId)
+              .eq('user_id', ctx.userId)
+              .maybeSingle();
+        if (snapshotError) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: snapshotError.message });
+        }
+        if (!snapshot) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: input.revisionId ? 'Revision no encontrada' : 'Proyecto no encontrado'
+          });
+        }
+
+        const pdf = buildTechnicalReportPdfBase64({
+          projectName: projectMeta.name?.trim() || 'Proyecto',
+          specs: normalizeProjectSpecs(projectMeta.specs),
+          simplifiedModel: snapshot.simplified_model,
+          calculations: snapshot.calculations,
+          dimensioning: snapshot.dimensioning
         });
+
+        await writeAuditLog(ctx, ctx.userId, input.projectId, 'export.pdf', {
+          revisionId: input.revisionId ?? null,
+          filename: pdf.filename
+        });
+
+        return {
+          kind: 'pdf' as const,
+          filename: pdf.filename,
+          contentBase64: pdf.contentBase64,
+          mimeType: pdf.mimeType
+        };
       })
   }),
 

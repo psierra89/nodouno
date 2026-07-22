@@ -271,6 +271,27 @@ export async function exportProjectJson(projectId: string, revisionId?: string) 
   return client.exports.requestJson.mutate({ projectId, revisionId });
 }
 
+export async function exportProjectPdf(projectId: string, revisionId?: string) {
+  const client = getTrpcClient();
+  if (!client) throw new Error('La exportación PDF requiere API disponible.');
+  return client.exports.requestPdf.mutate({ projectId, revisionId });
+}
+
+export function downloadBase64File(filename: string, contentBase64: string, mimeType: string) {
+  const binary = atob(contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function runServerCalc(simplifiedModel: unknown) {
   const client = getTrpcClient();
   if (!client) throw new Error('El cálculo remoto requiere API disponible.');
