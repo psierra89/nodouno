@@ -86,6 +86,26 @@ describe('snap', () => {
     expect(result.point.x).toBeCloseTo(0.3, 5);
     expect(result.point.y).toBeCloseTo(-1.2, 5);
   });
+
+  it('computeSnap detecta intersecciones entre vigas', () => {
+    const state: DrawingState = {
+      version: 4,
+      createdAt: '',
+      grid: { sizeM: 0.1, snapEnabled: true, orthoEnabled: false },
+      entities: {
+        columns: [],
+        beams: [
+          { id: 'b1', type: 'beam', x1: 0, y1: 1, x2: 2, y2: 1, widthM: 0.25, depthM: 0.5, props: {} },
+          { id: 'b2', type: 'beam', x1: 1, y1: 0, x2: 1, y2: 2, widthM: 0.25, depthM: 0.5, props: {} }
+        ],
+        slabs: []
+      }
+    };
+    const result = computeSnap({ x: 1.03, y: 0.97 }, baseCamera, state);
+    expect(result.kind).toBe('intersection');
+    expect(result.point.x).toBeCloseTo(1, 5);
+    expect(result.point.y).toBeCloseTo(1, 5);
+  });
 });
 
 describe('history', () => {

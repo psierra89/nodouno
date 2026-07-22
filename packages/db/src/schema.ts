@@ -34,6 +34,25 @@ export const steelClasses = pgTable('steel_classes', {
   description: text('description')
 });
 
+/** Cabecera viva del proyecto (estado actual mutable). */
+export const projects = pgTable('projects', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull(),
+  name: text('name').notNull(),
+  status: text('status').notNull().default('draft'),
+  specs: jsonb('specs'),
+  drawingData: jsonb('drawing_data'),
+  simplifiedModel: jsonb('simplified_model'),
+  calculations: jsonb('calculations'),
+  dimensioning: jsonb('dimensioning'),
+  currentRevisionId: uuid('current_revision_id'),
+  regulationCode: text('regulation_code'),
+  concreteCode: text('concrete_code'),
+  steelCode: text('steel_code'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 /** Snapshot inmutable por versión (histórico de proyecto). */
 export const projectRevisions = pgTable(
   'project_revisions',

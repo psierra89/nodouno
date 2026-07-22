@@ -10,7 +10,7 @@ import type {
   SnapResult
 } from './types';
 import { drawGrid } from './grid';
-import { bboxIntersects, entityBoundingBox, getColumnCorners } from './geometry';
+import { bboxIntersects, entityBoundingBox, getColumnCorners, polygonCentroid } from './geometry';
 import { getViewportBounds, worldToScreen } from './camera';
 
 export const COLORS = {
@@ -44,6 +44,7 @@ export interface RenderProps {
   snap: SnapResult | null;
   cursorWorld: { x: number; y: number } | null;
   showCrosshair: boolean;
+  selectionBox?: { start: { x: number; y: number }; current: { x: number; y: number } } | null;
 }
 
 function isSelected(ref: EntityRef, selected: ReadonlySet<string>): boolean {
@@ -266,8 +267,67 @@ function drawCrosshair(ctx: CanvasRenderingContext2D, world: { x: number; y: num
   ctx.setLineDash([]);
 }
 
+function drawEntityLabel(
+  ctx: CanvasRenderingContext2D,
+  entity: Entity,
+  cam: CameraState,
+  viewW: number,
+  viewH: number
+) {
+  let anchor: { x: number; y: number };
+  let text = entity.id.slice(-4).toUpperCase();
+  if (entity.type === 'beam') {
+    anchor = { x: (entity.x1 + entity.x2) / 2, y: (entity.y1 + entity.y2) / 2 };
+    text = entity.props?.name ? String(entity.props.name) : `V-${text}`;
+  } else if (entity.type === 'column') {
+    anchor = { x: entity.cx, y: entity.cy };
+    text = entity.props?.name ? String(entity.props.name) : `C-${text}`;
+  } else {
+    anchor = polygonCentroid(entity.points);
+    text = entity.props?.name ? String(entity.props.name) : `L-${text}`;
+  }
+  const screen = worldToScreen(cam, viewW, viewH, anchor.x, anchor.y);
+  ctx.save();
+  ctx.font = '700 11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const width = ctx.measureText(text).width + 12;
+  const height = 20;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.strokeStyle = 'rgba(0,13,16,0.22)';
+  ctx.beginPath();
+  ctx.roundRect(screen.sx - width / 2, screen.sy - height / 2, width, height, 999);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = COLORS.obsidian;
+  ctx.fillText(text, screen.sx, screen.sy + 0.5);
+  ctx.restore();
+}
+
+function drawSelectionBox(
+  ctx: CanvasRenderingContext2D,
+  box: { start: { x: number; y: number }; current: { x: number; y: number } },
+  cam: CameraState,
+  viewW: number,
+  viewH: number
+) {
+  const a = worldToScreen(cam, viewW, viewH, box.start.x, box.start.y);
+  const b = worldToScreen(cam, viewW, viewH, box.current.x, box.current.y);
+  const x = Math.min(a.sx, b.sx);
+  const y = Math.min(a.sy, b.sy);
+  const w = Math.abs(b.sx - a.sx);
+  const h = Math.abs(b.sy - a.sy);
+  ctx.save();
+  ctx.fillStyle = 'rgba(188, 113, 85, 0.12)';
+  ctx.strokeStyle = COLORS.preview;
+  ctx.setLineDash([6, 4]);
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+}
+
 export function render(ctx: CanvasRenderingContext2D, props: RenderProps) {
-  const { state, cam, viewW, viewH, selectedIds, hoverId, preview, snap, cursorWorld, showCrosshair } = props;
+  const { state, cam, viewW, viewH, selectedIds, hoverId, preview, snap, cursorWorld, showCrosshair, selectionBox } = props;
 
   ctx.fillStyle = COLORS.background;
   ctx.fillRect(0, 0, viewW, viewH);
@@ -301,6 +361,22 @@ export function render(ctx: CanvasRenderingContext2D, props: RenderProps) {
   }
 
   for (const slab of state.entities.slabs) {
+    const bbox = entityBoundingBox(slab);
+    if (!bboxIntersects(bbox, viewBox)) continue;
+    drawEntityLabel(ctx, slab, cam, viewW, viewH);
+  }
+  for (const beam of state.entities.beams) {
+    const bbox = entityBoundingBox(beam);
+    if (!bboxIntersects(bbox, viewBox)) continue;
+    drawEntityLabel(ctx, beam, cam, viewW, viewH);
+  }
+  for (const column of state.entities.columns) {
+    const bbox = entityBoundingBox(column);
+    if (!bboxIntersects(bbox, viewBox)) continue;
+    drawEntityLabel(ctx, column, cam, viewW, viewH);
+  }
+
+  for (const slab of state.entities.slabs) {
     if (selectedIds.has(slab.id)) drawSelectionHandles(ctx, slab, cam, viewW, viewH);
   }
   for (const beam of state.entities.beams) {
@@ -311,6 +387,7 @@ export function render(ctx: CanvasRenderingContext2D, props: RenderProps) {
   }
 
   if (preview) drawPreview(ctx, preview, cam, viewW, viewH);
+  if (selectionBox) drawSelectionBox(ctx, selectionBox, cam, viewW, viewH);
 
   if (snap) drawSnapMarker(ctx, snap, cam, viewW, viewH);
 }

@@ -1,4 +1,5 @@
 import type { CameraState, DrawingState, SnapResult } from './types';
+import { segmentIntersection } from './geometry';
 
 const SNAP_PIXELS = 12;
 
@@ -23,12 +24,20 @@ export function computeSnap(
   let bestPoint = worldPoint;
   let bestKind: SnapResult['kind'] = 'none';
   let bestDistSq = radiusW * radiusW;
+  const priority: Record<SnapResult['kind'], number> = {
+    none: 0,
+    grid: 1,
+    midpoint: 2,
+    endpoint: 3,
+    intersection: 4,
+    ortho: 5
+  };
 
   const consider = (px: number, py: number, kind: SnapResult['kind']) => {
     const dx = px - worldPoint.x;
     const dy = py - worldPoint.y;
     const dSq = dx * dx + dy * dy;
-    if (dSq < bestDistSq) {
+    if (dSq < bestDistSq || (Math.abs(dSq - bestDistSq) < 1e-9 && priority[kind] > priority[bestKind])) {
       bestDistSq = dSq;
       bestPoint = { x: px, y: py };
       bestKind = kind;
@@ -54,6 +63,36 @@ export function computeSnap(
   for (let i = 0; i < state.entities.columns.length; i++) {
     const c = state.entities.columns[i];
     consider(c.cx, c.cy, 'endpoint');
+  }
+
+  for (let i = 0; i < state.entities.beams.length; i++) {
+    const a = state.entities.beams[i];
+    for (let j = i + 1; j < state.entities.beams.length; j++) {
+      const b = state.entities.beams[j];
+      const point = segmentIntersection(
+        { x: a.x1, y: a.y1 },
+        { x: a.x2, y: a.y2 },
+        { x: b.x1, y: b.y1 },
+        { x: b.x2, y: b.y2 }
+      );
+      if (point) consider(point.x, point.y, 'intersection');
+    }
+  }
+
+  for (const slab of state.entities.slabs) {
+    for (let i = 0; i < slab.points.length; i++) {
+      const a = slab.points[i];
+      const b = slab.points[(i + 1) % slab.points.length];
+      for (const beam of state.entities.beams) {
+        const point = segmentIntersection(
+          a,
+          b,
+          { x: beam.x1, y: beam.y1 },
+          { x: beam.x2, y: beam.y2 }
+        );
+        if (point) consider(point.x, point.y, 'intersection');
+      }
+    }
   }
 
   if (bestKind !== 'none') {
