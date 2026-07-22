@@ -1078,10 +1078,18 @@ import IconButton from '../components/IconButton.astro';
         if (sessionLabel) {
           sessionLabel.textContent = `Sesion como ${session.user.email ?? 'usuario'}.`;
         }
+      } catch {
+        window.location.href = '/login';
+      }
+
+      try {
         const catalogs = await listCatalogs();
         if (specRegulation) {
           specRegulation.innerHTML = catalogs.regulations
-            .map((item) => `<option value="${item.code}">${item.name}</option>`)
+            .map((item) => {
+              const label = 'name' in item && typeof item.name === 'string' ? item.name : item.code;
+              return `<option value="${item.code}">${label}</option>`;
+            })
             .join('');
         }
         if (specSteel) {
@@ -1094,8 +1102,11 @@ import IconButton from '../components/IconButton.astro';
             .map((item) => `<option value="${item.code}">${item.code}</option>`)
             .join('');
         }
-      } catch {
-        window.location.href = '/login';
+      } catch (error) {
+        setSpecsStatus(
+          `Catálogos no disponibles (${(error as Error).message}). Usando valores por defecto.`,
+          true
+        );
       }
     }
 

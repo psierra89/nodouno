@@ -130,17 +130,22 @@ export async function initDashboardPage() {
 
     setFormStatus('Creando proyecto...');
     try {
-      await createProject({
+      const created = await createProject({
         name,
         specs: {
           ...DEFAULT_PROJECT_SPECS,
           concrete: projectConcreteSelect?.value ?? DEFAULT_PROJECT_SPECS.concrete
         }
       });
-      if (projectNameInput) projectNameInput.value = '';
-      if (projectConcreteSelect) projectConcreteSelect.value = DEFAULT_PROJECT_SPECS.concrete;
-      setFormStatus('Proyecto creado correctamente.');
-      await load();
+      const createdId = (created as { id?: string } | null)?.id;
+      if (!createdId) {
+        setFormStatus('Proyecto creado, pero no se obtuvo el id. Recarga la lista.', true);
+        await load();
+        return;
+      }
+      storeActiveProject({ id: createdId, name, status: 'draft' });
+      setFormStatus('Proyecto creado. Abriendo editor...');
+      window.location.href = `/editor?project=${createdId}`;
     } catch (error) {
       setFormStatus(`No se pudo crear el proyecto: ${(error as Error).message}`, true);
     }
@@ -148,9 +153,10 @@ export async function initDashboardPage() {
 
   projectsList?.addEventListener('click', async (event) => {
     const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
+    if (!(target instanceof Element)) return;
 
-    const openId = target.dataset.openId;
+    const openButton = target.closest<HTMLElement>('[data-open-id]');
+    const openId = openButton?.dataset.openId;
     if (openId) {
       try {
         const project = await getProject(openId);
@@ -162,23 +168,25 @@ export async function initDashboardPage() {
       return;
     }
 
-    if (target.dataset.requestDelete) {
-      pendingDeleteId = target.dataset.requestDelete;
+    const requestDeleteButton = target.closest<HTMLElement>('[data-request-delete]');
+    if (requestDeleteButton?.dataset.requestDelete) {
+      pendingDeleteId = requestDeleteButton.dataset.requestDelete;
       renderProjects(lastProjects);
       setFormStatus('Confirma o cancela la eliminacion en la tarjeta del proyecto.');
       return;
     }
 
-    if (target.dataset.cancelDelete != null) {
+    if (target.closest('[data-cancel-delete]')) {
       pendingDeleteId = null;
       renderProjects(lastProjects);
       setFormStatus('Eliminacion cancelada.');
       return;
     }
 
-    if (target.dataset.confirmDelete) {
+    const confirmDeleteButton = target.closest<HTMLElement>('[data-confirm-delete]');
+    if (confirmDeleteButton?.dataset.confirmDelete) {
       try {
-        await deleteProject(target.dataset.confirmDelete);
+        await deleteProject(confirmDeleteButton.dataset.confirmDelete);
         pendingDeleteId = null;
         setFormStatus('Proyecto eliminado.');
         await load();
