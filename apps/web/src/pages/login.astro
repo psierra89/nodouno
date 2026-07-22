@@ -8,7 +8,7 @@ import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
   <main class="flex min-h-screen items-center justify-center bg-canvas-white px-16 py-31 text-obsidian md:px-23">
     <section class="flex w-full max-w-[860px] flex-col items-center gap-22 rounded-3xl border border-obsidian px-22 py-31 text-center md:px-38 md:py-53">
       <img src={logoTr.src} alt="Nodouno" class="h-auto w-[min(96px,22vw)]" />
-      <h1 class="text-[clamp(52px,9vw,187px)] leading-[0.8] tracking-[-0.02em]">Iniciar sesion</h1>
+      <h1 id="auth-heading" class="text-[clamp(52px,9vw,187px)] leading-[0.8] tracking-[-0.02em]">Iniciar sesion</h1>
       <p id="login-status" class="max-w-[52ch] text-slate-mist">Ingresa tu usuario y contrasena para continuar.</p>
 
       <form id="login-form" class="flex w-full flex-col gap-13">
@@ -26,8 +26,7 @@ import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
       </form>
 
       <p class="text-slate-mist">
-        No tienes cuenta?
-        <a id="register-link" href="#" class="text-obsidian underline underline-offset-3">Crea una aqui.</a>
+        <a id="auth-toggle-link" href="#" class="text-obsidian underline underline-offset-3">Crea una aqui.</a>
       </p>
 
       <a href="/" class="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border border-obsidian text-obsidian no-underline transition-colors hover:bg-obsidian hover:text-canvas-white" title="Volver al inicio" aria-label="Volver al inicio">
@@ -37,59 +36,7 @@ import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
   </main>
 
   <script>
-    import { supabase } from '../lib/supabase';
-
-    const statusEl = document.querySelector('#login-status');
-    const loginForm = document.querySelector('#login-form');
-    const emailEl = document.querySelector('#login-email');
-    const passwordEl = document.querySelector('#login-password');
-    const submitBtn = document.querySelector('#login-submit');
-    const registerLink = document.querySelector('#register-link');
-
-    const setStatus = (message) => {
-      if (statusEl) statusEl.textContent = message;
-    };
-
-    if (!supabase) {
-      setStatus('Configuracion incompleta para iniciar sesion.');
-      submitBtn?.setAttribute('disabled', 'true');
-    } else {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        window.location.href = '/dashboard';
-      }
-    }
-
-    loginForm?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      if (!supabase) return;
-      const email = emailEl?.value?.trim();
-      const password = passwordEl?.value ?? '';
-      if (!email || !password) {
-        setStatus('Completa email y contrasena.');
-        return;
-      }
-
-      setStatus('Validando credenciales...');
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        const hint =
-          error.message === 'Failed to fetch'
-            ? ' No se pudo contactar Supabase (revisa que el proyecto este activo y las variables PUBLIC_SUPABASE_* en Vercel).'
-            : '';
-        setStatus(`Error: ${error.message}${hint}`);
-        return;
-      }
-      window.location.href = '/dashboard';
-    });
-
-    registerLink?.addEventListener('click', (event) => {
-      event.preventDefault();
-      setStatus('Registro no habilitado por ahora.');
-    });
+    import { initLoginPage } from '../lib/loginPage';
+    void initLoginPage();
   </script>
 </Layout>

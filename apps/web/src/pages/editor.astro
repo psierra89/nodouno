@@ -331,10 +331,13 @@ import IconButton from '../components/IconButton.astro';
           <section class="grid gap-11 rounded-3xl border border-obsidian/20 p-16">
             <div class="flex flex-wrap items-center justify-between gap-11">
               <h5 class="text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Exportación</h5>
-              <IconButton id="export-json-btn" variant="ghost" size="sm" icon="download" label="Exportar JSON" />
+              <div class="flex flex-wrap items-center gap-8">
+                <IconButton id="export-json-btn" variant="ghost" size="sm" icon="download" label="Exportar JSON" />
+                <IconButton id="export-pdf-btn" variant="ghost" size="sm" icon="save" label="Exportar PDF" />
+              </div>
             </div>
             <p id="export-status" class="text-body-sm text-slate-mist">
-              Exporta el snapshot actual o una revisión específica del proyecto.
+              Exporta JSON o un informe PDF del snapshot actual del proyecto.
             </p>
           </section>
         </aside>
@@ -391,6 +394,8 @@ import IconButton from '../components/IconButton.astro';
     import { supabase } from '../lib/supabase';
     import { createStructuralViewer3d } from '../lib/structuralViewer3d';
     import { hydratePipelineResults } from '../lib/editorCalcPipeline';
+    import { initEditorLoadsStep } from '../lib/editorLoadsStep';
+    import { downloadTechnicalReportPdf } from '../lib/editorPdfExport';
     import { initEditorRevisionsPanel } from '../lib/editorRevisionsPanel';
     import { renderTechnicalPanel, type CalcPipelineResults } from '../lib/technicalPanel';
     import {
@@ -406,22 +411,18 @@ import IconButton from '../components/IconButton.astro';
       calculateDemands,
       calculateDesign,
       calculateLoads,
-      calculateUltimateSurfaceLoad,
       normalizeBuildingInput
     } from '@nodouno/calc';
     import type { BuildingInput, ElementType } from '@nodouno/calc';
     import { mountEditor2d } from '@nodouno/editor2d';
-    import type { DrawingState, Editor2DHandle, HudInfo, SlabEntity, ToolKind } from '@nodouno/editor2d';
+    import type { DrawingState, Editor2DHandle, HudInfo, ToolKind } from '@nodouno/editor2d';
     import { deriveBuildingModel } from '@nodouno/editor2d/derivedModel';
     import { polygonArea } from '@nodouno/editor2d/geometry';
     import { migrateDrawingData, toLegacyFreeDrawing } from '@nodouno/editor2d/migration';
     import {
-      CIRSOC_101_LOAD_TYPOLOGIES,
       DEFAULT_PROJECT_SPECS,
       concreteStrengthMpa,
-      liveLoadForTypology,
-      normalizeProjectSpecs,
-      type LoadTypologyCode
+      normalizeProjectSpecs
     } from '@nodouno/shared';
 
     const sessionLabel = document.querySelector('#session-label');
@@ -441,6 +442,7 @@ import IconButton from '../components/IconButton.astro';
     const revisionsStatus = document.querySelector<HTMLElement>('#revisions-status');
     const revisionsList = document.querySelector<HTMLElement>('#revisions-list');
     const exportJsonBtn = document.querySelector<HTMLButtonElement>('#export-json-btn');
+    const exportPdfBtn = document.querySelector<HTMLButtonElement>('#export-pdf-btn');
     const exportStatus = document.querySelector<HTMLElement>('#export-status');
     const loadsCanvas = document.querySelector<HTMLCanvasElement>('#loads-canvas');
     const loadsHudStatus = document.querySelector<HTMLElement>('#loads-hud-status');
@@ -498,7 +500,7 @@ import IconButton from '../components/IconButton.astro';
     let activeTool: ToolKind = 'select';
     let lastPropertiesHudKey = '';
     let editor: Editor2DHandle | null = null;
-    let loadsEditor: Editor2DHandle | null = null;
+    let loadsStep: ReturnType<typeof initEditorLoadsStep> | null = null;
     let drawingDirty = false;
     let simplifiedModel: BuildingInput | null = null;
     let pipelineResults: CalcPipelineResults | null = null;
@@ -587,6 +589,24 @@ import IconButton from '../components/IconButton.astro';
       }, 700);
     };
 
+    loadsStep = initEditorLoadsStep({
+      getMainEditor: () => editor,
+      onSlabPatched: schedulePersistDrawing,
+      elements: {
+        canvas: loadsCanvas,
+        hudStatus: loadsHudStatus,
+        validation: step3Validation,
+        noSlabs: step3NoSlabs,
+        loadsPanel: step3LoadsPanel,
+        slabPicker: step3SlabPicker,
+        loadFields: step3LoadFields,
+        loadPreview: step3LoadPreview,
+        fitBtn: loadsFitBtn,
+        zoomInBtn: loadsZoomInBtn,
+        zoomOutBtn: loadsZoomOutBtn
+      }
+    });
+
     const refreshSimplifiedModelFromEditor = (): boolean => {
       if (!editor) return Boolean(simplifiedModel);
       const derived = deriveBuildingModel(editor.getState());
@@ -597,250 +617,8 @@ import IconButton from '../components/IconButton.astro';
       simplifiedModel = derived.model;
       simplifiedModel.materials.fckMpa = concreteStrengthMpa(projectSpecs.concrete);
       simplifiedModel.materials.fyMpa = 420;
-      if (derived.warnings.length > 0) showStep3Validation(derived.warnings);
+      if (derived.warnings.length > 0) loadsStep?.showValidation(derived.warnings);
       return true;
-    };
-
-    const DEFAULT_SLAB_DEAD = 1.5;
-
-    const readSlabProps = (slab: SlabEntity) => ({
-      loadTypologyCode: slab.props?.loadTypologyCode as LoadTypologyCode | undefined,
-      deadLoadKnm2:
-        typeof slab.props?.deadLoadKnm2 === 'number' ? slab.props.deadLoadKnm2 : DEFAULT_SLAB_DEAD,
-      liveLoadOverrideKnm2:
-        typeof slab.props?.liveLoadOverrideKnm2 === 'number'
-          ? slab.props.liveLoadOverrideKnm2
-          : undefined
-    });
-
-    const patchSlabInDrawing = (
-      slabId: string,
-      updater: (slab: SlabEntity) => SlabEntity
-    ) => {
-      if (!editor) return;
-      const state = structuredClone(editor.getState());
-      const idx = state.entities.slabs.findIndex((s) => s.id === slabId);
-      if (idx < 0) return;
-      state.entities.slabs[idx] = updater(state.entities.slabs[idx]!);
-      editor.setState(state, { commit: true });
-      schedulePersistDrawing();
-      if (loadsEditor && currentStep === 3) {
-        syncLoadsEditorFromMain();
-        renderStep3Panel();
-      }
-    };
-
-    let step3PickerSync = false;
-
-    const slabDisplayName = (slab: SlabEntity, index: number) => {
-      const custom = slab.props?.name;
-      if (typeof custom === 'string' && custom.trim()) return custom.trim();
-      return `Losa ${index + 1}`;
-    };
-
-    const getSelectedStep3SlabId = (): string | null => {
-      const sel = loadsEditor?.getSelection() ?? [];
-      const slabRef = sel.find((r) => r.type === 'slab');
-      return slabRef?.id ?? null;
-    };
-
-    const syncLoadsEditorFromMain = () => {
-      if (!loadsEditor || !editor) return;
-      loadsEditor.setState(structuredClone(editor.getState()), { commit: false });
-    };
-
-    const ensureLoadsEditor = () => {
-      if (loadsEditor || !loadsCanvas || !editor) return;
-      loadsEditor = mountEditor2d(loadsCanvas, {
-        interactionMode: 'slabLoads',
-        initialState: structuredClone(editor.getState()),
-        onSelectionChange: () => {
-          if (step3PickerSync) return;
-          renderStep3Panel();
-        },
-        onHud: (hud) => {
-          if (loadsHudStatus) loadsHudStatus.textContent = hud.status;
-        }
-      });
-      loadsEditor.fit();
-    };
-
-    const enterStep3 = () => {
-      ensureLoadsEditor();
-      syncLoadsEditorFromMain();
-      requestAnimationFrame(() => {
-        loadsEditor?.fit();
-        const slabs = editor?.getState().entities.slabs ?? [];
-        if (slabs[0]) {
-          loadsEditor?.setSelection([{ type: 'slab', id: slabs[0].id }]);
-        } else {
-          loadsEditor?.clearSelection();
-        }
-        renderStep3Panel();
-      });
-    };
-
-    const renderStep3LoadFields = (slab: SlabEntity) => {
-      if (!step3LoadFields) return;
-      step3LoadFields.innerHTML = '';
-      const props = readSlabProps(slab);
-
-      const typologyLabel = document.createElement('label');
-      typologyLabel.className = 'grid gap-8';
-      typologyLabel.innerHTML = '<span class="text-body-sm font-bold">Tipología CIRSOC 101</span>';
-      const typologySelect = document.createElement('select');
-      typologySelect.className = 'cad-input';
-      const emptyOpt = document.createElement('option');
-      emptyOpt.value = '';
-      emptyOpt.textContent = '— Seleccionar —';
-      typologySelect.appendChild(emptyOpt);
-      for (const t of CIRSOC_101_LOAD_TYPOLOGIES) {
-        const opt = document.createElement('option');
-        opt.value = t.code;
-        opt.textContent = `${t.label} (L=${t.liveLoadKnm2 ?? 'manual'} kN/m²)`;
-        typologySelect.appendChild(opt);
-      }
-      typologySelect.value = props.loadTypologyCode ?? '';
-      typologySelect.addEventListener('change', () => {
-        const code = typologySelect.value as LoadTypologyCode | '';
-        patchSlabInDrawing(slab.id, (s) => ({
-          ...s,
-          props: { ...s.props, loadTypologyCode: code || undefined }
-        }));
-      });
-      typologyLabel.appendChild(typologySelect);
-      step3LoadFields.appendChild(typologyLabel);
-
-      const deadLabel = document.createElement('label');
-      deadLabel.className = 'grid gap-8';
-      deadLabel.innerHTML = '<span class="text-body-sm font-bold">Muerta adicional (kN/m²)</span>';
-      const deadInput = document.createElement('input');
-      deadInput.type = 'number';
-      deadInput.min = '0';
-      deadInput.step = '0.1';
-      deadInput.className = 'cad-input';
-      deadInput.value = String(props.deadLoadKnm2);
-      deadInput.addEventListener('change', () => {
-        patchSlabInDrawing(slab.id, (s) => ({
-          ...s,
-          props: { ...s.props, deadLoadKnm2: Number(deadInput.value) || DEFAULT_SLAB_DEAD }
-        }));
-      });
-      deadLabel.appendChild(deadInput);
-      step3LoadFields.appendChild(deadLabel);
-
-      if (props.loadTypologyCode === 'CUSTOM') {
-        const liveWrap = document.createElement('label');
-        liveWrap.className = 'grid gap-8';
-        liveWrap.innerHTML = '<span class="text-body-sm font-bold">L viva manual (kN/m²)</span>';
-        const liveInput = document.createElement('input');
-        liveInput.type = 'number';
-        liveInput.min = '0';
-        liveInput.step = '0.1';
-        liveInput.className = 'cad-input';
-        liveInput.value = String(props.liveLoadOverrideKnm2 ?? 2);
-        liveInput.addEventListener('change', () => {
-          patchSlabInDrawing(slab.id, (s) => ({
-            ...s,
-            props: { ...s.props, liveLoadOverrideKnm2: Number(liveInput.value) }
-          }));
-        });
-        liveWrap.appendChild(liveInput);
-        step3LoadFields.appendChild(liveWrap);
-      }
-
-      const preview = slabPreviewLoads(slab);
-      if (step3LoadPreview) {
-        step3LoadPreview.textContent = preview
-          ? `Vista previa: D=${preview.D.toFixed(2)} · L=${preview.L.toFixed(2)} · qu=${preview.qu.toFixed(2)} kN/m²`
-          : 'Complete tipología para ver D, L y qu.';
-      }
-    };
-
-    const renderStep3Panel = () => {
-      if (!editor) return;
-      const slabs = editor.getState().entities.slabs;
-      showStep3Validation(validateStep3());
-
-      if (slabs.length === 0) {
-        step3NoSlabs?.classList.remove('hidden');
-        step3LoadsPanel?.classList.add('hidden');
-        if (step3SlabPicker) step3SlabPicker.innerHTML = '';
-        if (step3LoadPreview) step3LoadPreview.textContent = '';
-        return;
-      }
-
-      step3NoSlabs?.classList.add('hidden');
-      step3LoadsPanel?.classList.remove('hidden');
-
-      let selectedId = getSelectedStep3SlabId();
-      if (!selectedId || !slabs.some((s) => s.id === selectedId)) {
-        selectedId = slabs[0]!.id;
-        loadsEditor?.setSelection([{ type: 'slab', id: selectedId }]);
-      }
-
-      if (step3SlabPicker) {
-        step3PickerSync = true;
-        step3SlabPicker.innerHTML = '';
-        slabs.forEach((slab, i) => {
-          const opt = document.createElement('option');
-          opt.value = slab.id;
-          opt.textContent = `${slabDisplayName(slab, i)} — ${polygonArea(slab.points).toFixed(1)} m²`;
-          step3SlabPicker.appendChild(opt);
-        });
-        step3SlabPicker.value = selectedId;
-        if (!step3SlabPicker.dataset.bound) {
-          step3SlabPicker.dataset.bound = '1';
-          step3SlabPicker.addEventListener('change', () => {
-            const id = step3SlabPicker!.value;
-            if (!id) return;
-            loadsEditor?.setSelection([{ type: 'slab', id }]);
-            renderStep3Panel();
-          });
-        }
-        step3PickerSync = false;
-      }
-
-      const slab = slabs.find((s) => s.id === selectedId);
-      if (slab) renderStep3LoadFields(slab);
-    };
-
-    const slabPreviewLoads = (slab: SlabEntity) => {
-      const props = readSlabProps(slab);
-      const L = liveLoadForTypology(props.loadTypologyCode, props.liveLoadOverrideKnm2);
-      if (L === null) return null;
-      const D = slab.thicknessM * 24 + props.deadLoadKnm2;
-      const qu = calculateUltimateSurfaceLoad(slab.thicknessM, props.deadLoadKnm2, L);
-      return { D, L, qu };
-    };
-
-    const validateStep3 = (): string[] => {
-      const issues: string[] = [];
-      const state = editor?.getState();
-      if (!state || state.entities.slabs.length === 0) {
-        issues.push('Dibuje al menos una losa en el paso 2.');
-        return issues;
-      }
-      for (const slab of state.entities.slabs) {
-        const props = readSlabProps(slab);
-        if (!props.loadTypologyCode) {
-          issues.push(`Losa ${slab.id.slice(-4)}: seleccione tipología CIRSOC 101.`);
-        } else if (liveLoadForTypology(props.loadTypologyCode, props.liveLoadOverrideKnm2) === null) {
-          issues.push(`Losa ${slab.id.slice(-4)}: carga viva inválida (revise CUSTOM).`);
-        }
-      }
-      return issues;
-    };
-
-    const showStep3Validation = (messages: string[]) => {
-      if (!step3Validation) return;
-      if (messages.length === 0) {
-        step3Validation.classList.add('hidden');
-        step3Validation.textContent = '';
-        return;
-      }
-      step3Validation.classList.remove('hidden');
-      step3Validation.textContent = messages.join(' ');
     };
 
     const updateActiveToolButton = (tool: ToolKind) => {
@@ -1078,7 +856,7 @@ import IconButton from '../components/IconButton.astro';
       selectedElementType = null;
 
       if (currentStep === 3) {
-        enterStep3();
+        loadsStep?.enter();
       }
       if (currentStep === 4) {
         if (pipelineResults) {
@@ -1178,9 +956,9 @@ import IconButton from '../components/IconButton.astro';
     setStep = async (step: 1 | 2 | 3 | 4) => {
       const prev = currentStep;
       if (prev === 3 && step !== 3) {
-        const issues = step === 4 ? validateStep3() : [];
+        const issues = step === 4 ? (loadsStep?.validate() ?? []) : [];
         if (step === 4 && issues.length > 0) {
-          showStep3Validation(issues);
+          loadsStep?.showValidation(issues);
           setEditorStatus('Complete las cargas por losa antes de avanzar.', true);
           return;
         }
@@ -1217,7 +995,7 @@ import IconButton from '../components/IconButton.astro';
         requestAnimationFrame(() => editor!.fit());
       }
       if (step === 3) {
-        enterStep3();
+        loadsStep?.enter();
       }
       if (step === 4) {
         enterStep4();
@@ -1328,8 +1106,8 @@ import IconButton from '../components/IconButton.astro';
           drawingDirty = true;
           renderPropertiesPanel();
           if (currentStep === 3) {
-            syncLoadsEditorFromMain();
-            renderStep3Panel();
+            loadsStep?.syncFromMainEditor();
+            loadsStep?.renderPanel();
           }
         },
         onHud: (hud) => {
@@ -1352,15 +1130,10 @@ import IconButton from '../components/IconButton.astro';
       setSpecsStatus('Sin proyecto activo.', true);
     }
 
-    loadsFitBtn?.addEventListener('click', () => loadsEditor?.fit());
-    loadsZoomInBtn?.addEventListener('click', () => loadsEditor?.zoomIn());
-    loadsZoomOutBtn?.addEventListener('click', () => loadsEditor?.zoomOut());
-
     window.addEventListener('pagehide', () => {
       viewer3d?.dispose();
       viewer3d = null;
-      loadsEditor?.dispose();
-      loadsEditor = null;
+      loadsStep?.dispose();
       editor?.dispose();
       editor = null;
     });
@@ -1462,9 +1235,9 @@ import IconButton from '../components/IconButton.astro';
 
     runCalcBtn?.addEventListener('click', async () => {
       if (editor) {
-        const issues = validateStep3();
+        const issues = loadsStep?.validate() ?? [];
         if (issues.length > 0) {
-          showStep3Validation(issues);
+          loadsStep?.showValidation(issues);
           setStep4CalcStatus('Complete cargas en paso 3.', true);
           return;
         }
@@ -1545,6 +1318,22 @@ import IconButton from '../components/IconButton.astro';
       }
     });
 
+    exportPdfBtn?.addEventListener('click', () => {
+      if (!activeProjectId) return;
+      try {
+        setExportStatus('Generando informe PDF...');
+        downloadTechnicalReportPdf({
+          projectName: activeProjectName ?? 'Proyecto',
+          specs: projectSpecs,
+          model: simplifiedModel,
+          results: pipelineResults
+        });
+        setExportStatus('Informe PDF descargado.');
+      } catch (error) {
+        setExportStatus((error as Error).message, true);
+      }
+    });
+
     prevStepBtn?.addEventListener('click', () => {
       if (currentStep > 1) void setStep((currentStep - 1) as 1 | 2 | 3 | 4);
     });
@@ -1564,9 +1353,9 @@ import IconButton from '../components/IconButton.astro';
         drawingDirty = false;
       }
       if (currentStep === 3) {
-        const issues = validateStep3();
+        const issues = loadsStep?.validate() ?? [];
         if (issues.length > 0) {
-          showStep3Validation(issues);
+          loadsStep?.showValidation(issues);
           setEditorStatus('Complete las cargas por losa antes de avanzar.', true);
           return;
         }
