@@ -212,6 +212,80 @@ export const appRouter = t.router({
           .eq('user_id', ctx.userId);
         await writeAuditLog(ctx, ctx.userId, input.projectId, 'revision.created', { revisionId: data!.id, version: nextVersion });
         return data!;
+      }),
+
+    restore: t.procedure
+      .use(requireUser)
+      .input(
+        z.object({
+          projectId: z.string().uuid(),
+          revisionId: z.string().uuid()
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await assertProjectOwned(ctx, input.projectId);
+        const { data: revision, error: revisionError } = await ctx.supabaseAdmin
+          .from('project_revisions')
+          .select('id, version, drawing_data, simplified_model, calculations, dimensioning')
+          .eq('id', input.revisionId)
+          .eq('project_id', input.projectId)
+          .maybeSingle();
+        if (revisionError) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: revisionError.message });
+        }
+        if (!revision) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Revision no encontrada' });
+        }
+
+        const calculations =
+          revision.calculations == null
+            ? null
+            : calculationsSnapshotSchema.parse(revision.calculations);
+        const dimensioning =
+          revision.dimensioning == null
+            ? null
+            : dimensioningSnapshotSchema.parse(revision.dimensioning);
+        const simplifiedModel =
+          revision.simplified_model == null
+            ? null
+            : normalizeBuildingInput(revision.simplified_model);
+
+        let status: z.infer<typeof projectStatusSchema> = 'draft';
+        if (revision.drawing_data) status = 'drawn';
+        if (simplifiedModel) status = 'loaded';
+        if (calculations) status = 'calculated';
+        if (dimensioning) status = 'dimensioned';
+
+        const { error: updateError } = await ctx.supabaseAdmin
+          .from('projects')
+          .update({
+            drawing_data: revision.drawing_data,
+            simplified_model: simplifiedModel,
+            calculations,
+            dimensioning,
+            current_revision_id: revision.id,
+            status: projectStatusForDb(status)
+          })
+          .eq('id', input.projectId)
+          .eq('user_id', ctx.userId);
+        if (updateError) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: updateError.message });
+        }
+
+        await writeAuditLog(ctx, ctx.userId, input.projectId, 'revision.restored', {
+          revisionId: revision.id,
+          version: revision.version
+        });
+
+        return {
+          id: revision.id,
+          version: revision.version,
+          drawing_data: revision.drawing_data,
+          simplified_model: simplifiedModel,
+          calculations,
+          dimensioning,
+          status
+        };
       })
   }),
 
