@@ -18,6 +18,16 @@ type RevisionRow = {
   created_at?: string | null;
 };
 
+export type RevisionDetail = {
+  id: string;
+  version: number;
+  drawing_data?: unknown;
+  simplified_model?: unknown;
+  calculations?: unknown;
+  dimensioning?: unknown;
+  status?: ProjectStatus;
+};
+
 type ProjectRow = {
   id: string;
   name?: string | null;
@@ -28,6 +38,7 @@ type ProjectRow = {
   simplified_model?: unknown;
   calculations?: unknown;
   dimensioning?: unknown;
+  current_revision_id?: string | null;
 };
 
 export type ProjectSummary = {
@@ -43,6 +54,7 @@ export type ProjectDetail = ProjectSummary & {
   simplified_model?: unknown;
   calculations?: unknown;
   dimensioning?: unknown;
+  current_revision_id?: string | null;
 };
 
 export type ProjectPatch = {
@@ -80,7 +92,8 @@ function normalizeProject(row: ProjectRow): ProjectDetail {
     drawing_data: row.drawing_data,
     simplified_model: row.simplified_model,
     calculations,
-    dimensioning
+    dimensioning,
+    current_revision_id: row.current_revision_id ?? null
   };
 }
 
@@ -225,6 +238,12 @@ export async function listRevisions(projectId: string): Promise<RevisionRow[]> {
   const client = getTrpcClient();
   if (!client) throw new Error('Las revisiones requieren API disponible.');
   return client.revisions.list.query({ projectId });
+}
+
+export async function restoreRevision(projectId: string, revisionId: string): Promise<RevisionDetail> {
+  const client = getTrpcClient();
+  if (!client) throw new Error('Las revisiones requieren API disponible.');
+  return client.revisions.restore.mutate({ projectId, revisionId });
 }
 
 export async function createRevisionSnapshot(input: {

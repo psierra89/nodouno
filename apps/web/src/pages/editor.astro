@@ -398,6 +398,7 @@ import IconButton from '../components/IconButton.astro';
       listCatalogs,
       listRevisions,
       requireSession,
+      restoreRevision,
       runServerCalc,
       updateProject,
       type ProjectDetail
@@ -423,6 +424,7 @@ import IconButton from '../components/IconButton.astro';
       normalizeProjectSpecs,
       type LoadTypologyCode
     } from '@nodouno/shared';
+    import { iconButtonHtml } from '../lib/icons';
 
     const sessionLabel = document.querySelector('#session-label');
     const logoutBtn = document.querySelector('#logout-btn');
@@ -507,6 +509,7 @@ import IconButton from '../components/IconButton.astro';
     let selectedElementType: ElementType | null = null;
     let projectSpecs = DEFAULT_PROJECT_SPECS;
     let lastRevisionId: string | undefined;
+    let currentRevisionId: string | null = null;
 
     const setEditorStatus = (message: string, isError = false) => {
       if (!editorStatus) return;
@@ -1107,6 +1110,39 @@ import IconButton from '../components/IconButton.astro';
       );
     };
 
+    const applyProjectSnapshot = (snapshot: {
+      drawing_data?: unknown;
+      simplified_model?: unknown;
+      calculations?: unknown;
+      dimensioning?: unknown;
+    }) => {
+      if (editor && snapshot.drawing_data) {
+        editor.setState(migrateDrawingData(snapshot.drawing_data), { commit: true });
+        drawingDirty = false;
+        renderPropertiesPanel();
+      }
+
+      simplifiedModel = snapshot.simplified_model
+        ? normalizeBuildingInput(snapshot.simplified_model)
+        : null;
+      pipelineResults = hydratePipelineResults(snapshot.calculations, snapshot.dimensioning);
+      selectedElementId = null;
+      selectedElementType = null;
+
+      if (currentStep === 3) {
+        enterStep3();
+      }
+      if (currentStep === 4) {
+        if (pipelineResults) {
+          setStep4CalcStatus('Resultados restaurados desde revision.');
+        } else {
+          setStep4CalcStatus('Modelo restaurado. Pulse Calcular para obtener resultados.');
+        }
+        sync3dViewer();
+        refreshTechnicalPanel();
+      }
+    };
+
     const renderRevisionItems = async () => {
       if (!activeProjectId || !revisionsList) return;
       try {
@@ -1118,20 +1154,41 @@ import IconButton from '../components/IconButton.astro';
           return;
         }
         revisionsList.innerHTML = revisions
-          .map(
-            (revision) => `
-              <button
-                type="button"
-                class="rounded-3xl border border-obsidian/20 px-16 py-13 text-left transition-colors hover:border-obsidian"
-                data-export-revision-id="${revision.id}"
+          .map((revision) => {
+            const isCurrent = currentRevisionId === revision.id;
+            return `
+              <article
+                class="flex flex-wrap items-center justify-between gap-11 rounded-3xl border px-16 py-13 text-left transition-colors ${
+                  isCurrent ? 'border-obsidian bg-obsidian/5' : 'border-obsidian/20 hover:border-obsidian'
+                }"
+                data-revision-id="${revision.id}"
               >
-                <strong class="block text-obsidian">v${revision.version}</strong>
-                <span class="block text-slate-mist">${revision.comment?.trim() || 'Sin comentario'} · ${revision.created_at ? new Date(revision.created_at).toLocaleString() : 'fecha desconocida'}</span>
-              </button>
-            `
-          )
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-8">
+                    <strong class="text-obsidian">v${revision.version}</strong>
+                    ${
+                      isCurrent
+                        ? '<span class="rounded-full border border-obsidian/30 px-8 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-obsidian">Actual</span>'
+                        : ''
+                    }
+                  </div>
+                  <span class="mt-4 block text-slate-mist">${revision.comment?.trim() || 'Sin comentario'} · ${
+                    revision.created_at ? new Date(revision.created_at).toLocaleString() : 'fecha desconocida'
+                  }</span>
+                </div>
+                <div class="flex items-center gap-8">
+                  ${iconButtonHtml('undo', `Restaurar revision v${revision.version}`, 'shrink-0', {
+                    'data-restore-revision-id': revision.id
+                  })}
+                  ${iconButtonHtml('download', `Exportar revision v${revision.version}`, 'shrink-0', {
+                    'data-export-revision-id': revision.id
+                  })}
+                </div>
+              </article>
+            `;
+          })
           .join('');
-        setRevisionsStatus('Snapshots disponibles.');
+        setRevisionsStatus('Snapshots disponibles. Restaura o exporta una revision.');
       } catch (error) {
         revisionsList.innerHTML = '<p class="text-slate-mist">Las revisiones requieren API disponible.</p>';
         setRevisionsStatus((error as Error).message, true);
@@ -1314,6 +1371,7 @@ import IconButton from '../components/IconButton.astro';
       if (projectData?.drawing_data) {
         initialDrawing = migrateDrawingData(projectData.drawing_data);
       }
+      currentRevisionId = projectData?.current_revision_id ?? null;
       if (projectData?.simplified_model) {
         simplifiedModel = normalizeBuildingInput(projectData.simplified_model);
       }
@@ -1470,6 +1528,7 @@ import IconButton from '../components/IconButton.astro';
           ...snapshot
         });
         lastRevisionId = result.id;
+        currentRevisionId = result.id;
         if (revisionCommentInput) revisionCommentInput.value = '';
         setRevisionsStatus(`Snapshot v${result.version} creado.`);
         await renderRevisionItems();
@@ -1495,10 +1554,34 @@ import IconButton from '../components/IconButton.astro';
 
     revisionsList?.addEventListener('click', async (event) => {
       const target = event.target;
-      if (!(target instanceof HTMLElement)) return;
-      const revisionButton = target.closest<HTMLElement>('[data-export-revision-id]');
-      const revisionId = revisionButton?.dataset.exportRevisionId;
-      if (!revisionId || !activeProjectId) return;
+      if (!(target instanceof HTMLElement) || !activeProjectId) return;
+
+      const restoreButton = target.closest<HTMLElement>('[data-restore-revision-id]');
+      const restoreRevisionId = restoreButton?.dataset.restoreRevisionId;
+      if (restoreRevisionId) {
+        const confirmed = window.confirm(
+          'Restaurar esta revision sobrescribira el estado actual del proyecto. ¿Continuar?'
+        );
+        if (!confirmed) return;
+
+        try {
+          setRevisionsStatus('Restaurando revision...');
+          const restored = await restoreRevision(activeProjectId, restoreRevisionId);
+          currentRevisionId = restored.id;
+          lastRevisionId = restored.id;
+          applyProjectSnapshot(restored);
+          setRevisionsStatus(`Revision v${restored.version} restaurada.`);
+          setEditorStatus(`Proyecto restaurado a revision v${restored.version}.`);
+          await renderRevisionItems();
+        } catch (error) {
+          setRevisionsStatus((error as Error).message, true);
+        }
+        return;
+      }
+
+      const exportButton = target.closest<HTMLElement>('[data-export-revision-id]');
+      const revisionId = exportButton?.dataset.exportRevisionId;
+      if (!revisionId) return;
       try {
         setExportStatus('Exportando revisión...');
         const result = await exportProjectJson(activeProjectId, revisionId);
