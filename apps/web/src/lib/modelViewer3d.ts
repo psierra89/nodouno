@@ -149,9 +149,6 @@ export function createSimplifiedModelViewer(
       root.add(tag);
     });
 
-    const hx = (bounds.maxX - bounds.minX) / 2;
-    const hz = (bounds.maxZ - bounds.minZ) / 2;
-
     const corners: Array<[number, number]> = [
       [bounds.minX, bounds.minZ],
       [bounds.maxX, bounds.minZ],

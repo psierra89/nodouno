@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-const elementTypeSchema = z.enum(['slab', 'beam', 'column']);
 const numberSchema = z.number().finite();
 
 export const slabLoadBreakdownSchema = z.object({

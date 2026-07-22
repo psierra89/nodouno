@@ -7,6 +7,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/.astro/**',
+      '**/.azure-deploy/**',
       'apps/web/dist/**',
       'agent-tools/**',
       '.cursor/**',

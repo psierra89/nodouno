@@ -144,8 +144,7 @@ function createBeamMesh(beam: BeamInput, index: number, slabTopY: number): THREE
 function createColumnMesh(
   col: ColumnInput,
   index: number,
-  position: [number, number],
-  slabTopY: number
+  position: [number, number]
 ): THREE.Mesh {
   const w = Math.max(0.15, col.widthM);
   const d = Math.max(0.15, col.depthM);
@@ -285,7 +284,7 @@ export function createStructuralViewer3d(
         px = corner[0];
         pz = corner[1];
       }
-      const mesh = createColumnMesh(col, idx, [px, pz], slabTopY);
+      const mesh = createColumnMesh(col, idx, [px, pz]);
       root.add(mesh);
       selectableMeshes.push(mesh);
       const label = makeLabel(`Col ${String(idx + 1).padStart(2, '0')}`);
