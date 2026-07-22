@@ -33,16 +33,22 @@ export async function initLoginPage() {
   const syncModeUi = () => {
     const isRegister = mode === 'register';
     if (elements.heading) {
-      elements.heading.textContent = isRegister ? 'Crear cuenta' : 'Iniciar sesion';
+      elements.heading.textContent = isRegister ? 'Crear cuenta' : 'Iniciar sesión';
     }
     if (elements.submitBtn) {
       elements.submitBtn.title = isRegister ? 'Registrarse' : 'Entrar';
       elements.submitBtn.setAttribute('aria-label', isRegister ? 'Registrarse' : 'Entrar');
+      const submitLabel = elements.submitBtn.querySelector('[data-submit-label]');
+      if (submitLabel) submitLabel.textContent = isRegister ? 'Crear cuenta' : 'Entrar';
+    }
+    const toggleHint = document.querySelector('[data-toggle-hint]');
+    if (toggleHint) {
+      toggleHint.textContent = isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?';
     }
     if (elements.toggleLink) {
       elements.toggleLink.textContent = isRegister
-        ? 'Ya tienes cuenta? Inicia sesion.'
-        : 'Crea una aqui.';
+        ? 'Inicia sesión aquí.'
+        : 'Crea una aquí.';
     }
     setStatus(
       isRegister

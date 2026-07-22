@@ -1,62 +1,143 @@
 @import "tailwindcss";
 
 @theme {
-  --color-obsidian: #000d10;
+  /*
+   * Sistema de diseño Nodouno — "documento técnico".
+   * Tinta profunda + azul blueprint (marca) + siena para señal/selección.
+   * Los nombres obsidian / canvas-white / slate-mist / desert-sienna se
+   * conservan porque la capa TS los alterna en runtime.
+   */
+  --color-obsidian: #0d1b26;
   --color-canvas-white: #ffffff;
-  --color-slate-mist: #8e8e95;
-  --color-desert-sienna: #bc7155;
+  --color-slate-mist: #5b6b78;
+  --color-desert-sienna: #b4552d;
 
-  --font-helveticanowdisplay: "HelveticaNowDisplay", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-blueprint: #1c4d8b;
+  --color-blueprint-deep: #102c4e;
+  --color-paper: #eef1f4;
+  --color-line: #d4dbe2;
+  --color-line-strong: #9fadba;
 
-  --text-body-sm: 17px;
-  --leading-body-sm: 1.61;
-  --tracking-body-sm: 0.17px;
-  --text-subheading: 20px;
-  --leading-subheading: 1.2;
-  --tracking-subheading: 0.2px;
-  --text-heading-sm: 30px;
-  --leading-heading-sm: 1.1;
-  --tracking-heading-sm: -0.3px;
-  --text-heading: 52px;
-  --leading-heading: 1.09;
-  --tracking-heading: -0.52px;
-  --text-heading-lg: 63px;
-  --leading-heading-lg: 0.91;
-  --tracking-heading-lg: -0.63px;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-display: "IBM Plex Sans Condensed", "IBM Plex Sans", ui-sans-serif, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
 
-  --spacing-11: 11px;
-  --spacing-13: 13px;
-  --spacing-15: 15px;
+  --text-body-sm: 14px;
+  --leading-body-sm: 1.55;
+  --tracking-body-sm: 0.01em;
+  --text-subheading: 16px;
+  --leading-subheading: 1.3;
+  --tracking-subheading: 0;
+  --text-heading-sm: 22px;
+  --leading-heading-sm: 1.15;
+  --tracking-heading-sm: -0.01em;
+  --text-heading: 34px;
+  --leading-heading: 1.08;
+  --tracking-heading: -0.015em;
+  --text-heading-lg: 58px;
+  --leading-heading-lg: 0.98;
+  --tracking-heading-lg: -0.02em;
+
+  --spacing-2: 2px;
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-11: 10px;
+  --spacing-13: 12px;
+  --spacing-15: 14px;
   --spacing-16: 16px;
-  --spacing-17: 17px;
-  --spacing-21: 21px;
-  --spacing-22: 22px;
-  --spacing-23: 23px;
-  --spacing-31: 31px;
-  --spacing-34: 34px;
-  --spacing-38: 38px;
-  --spacing-53: 53px;
-  --spacing-59: 59px;
+  --spacing-17: 16px;
+  --spacing-21: 20px;
+  --spacing-22: 20px;
+  --spacing-23: 24px;
+  --spacing-31: 32px;
+  --spacing-34: 32px;
+  --spacing-38: 40px;
+  --spacing-53: 52px;
+  --spacing-59: 60px;
   --spacing-60: 60px;
   --spacing-68: 68px;
-  --spacing-119: 119px;
+  --spacing-119: 120px;
 
-  --radius-3xl: 45px;
+  --radius-3xl: 8px;
   --radius-full: 1000px;
 }
 
 @layer base {
   body {
-    @apply m-0 bg-canvas-white font-helveticanowdisplay text-body-sm leading-body-sm text-obsidian;
+    @apply m-0 bg-paper font-sans text-body-sm leading-body-sm text-obsidian;
+    font-feature-settings: "ss01" on;
   }
 
   h1,
   h2,
   h3 {
-    @apply m-0 font-bold tracking-[-0.02em];
+    @apply m-0 font-display font-semibold;
   }
 
   p {
     @apply m-0;
+  }
+
+  ::selection {
+    background: var(--color-blueprint);
+    color: #ffffff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-blueprint);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Etiqueta técnica en mayúsculas: cabeceras de panel, leyendas, HUD. */
+  .microlabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-slate-mist);
+  }
+
+  /* Panel de documento técnico: superficie blanca con hairline. */
+  .panel {
+    background: var(--color-canvas-white);
+    border: 1px solid var(--color-line);
+    border-radius: 8px;
+  }
+
+  /* Datos numéricos: coordenadas, medidas, resultados. */
+  .datum {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Rejilla de plano azul, para fondos de secciones de marca. */
+  .blueprint-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size:
+      120px 120px,
+      120px 120px,
+      24px 24px,
+      24px 24px;
+  }
+
+  /* Rejilla de papel milimetrado, para fondos claros. */
+  .paper-grid {
+    background-image:
+      linear-gradient(to right, rgba(13, 27, 38, 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(13, 27, 38, 0.055) 1px, transparent 1px),
+      linear-gradient(to right, rgba(13, 27, 38, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(13, 27, 38, 0.03) 1px, transparent 1px);
+    background-size:
+      120px 120px,
+      120px 120px,
+      24px 24px,
+      24px 24px;
   }
 }

@@ -15,22 +15,22 @@ import { getViewportBounds, worldToScreen } from './camera';
 
 export const COLORS = {
   background: '#ffffff',
-  obsidian: '#000d10',
-  slateMist: '#8e8e95',
-  sienna: '#bc7155',
-  beam: '#000d10',
-  beamSelected: '#bc7155',
-  columnFill: '#bc7155',
-  columnSelected: '#000d10',
-  slabFill: 'rgba(142, 142, 149, 0.18)',
-  slabStroke: '#8e8e95',
-  slabSelected: '#bc7155',
-  preview: '#bc7155',
-  selection: '#bc7155',
-  hover: 'rgba(188, 113, 85, 0.55)',
-  snapMarker: '#bc7155',
-  snapText: '#000d10',
-  cursorCross: 'rgba(0,13,16,0.45)'
+  obsidian: '#0d1b26',
+  slateMist: '#5b6b78',
+  sienna: '#b4552d',
+  beam: '#0d1b26',
+  beamSelected: '#1c4d8b',
+  columnFill: '#b4552d',
+  columnSelected: '#1c4d8b',
+  slabFill: 'rgba(91, 107, 120, 0.14)',
+  slabStroke: '#5b6b78',
+  slabSelected: '#1c4d8b',
+  preview: '#1c4d8b',
+  selection: '#1c4d8b',
+  hover: 'rgba(28, 77, 139, 0.5)',
+  snapMarker: '#b4552d',
+  snapText: '#0d1b26',
+  cursorCross: 'rgba(13,27,38,0.45)'
 };
 
 export interface RenderProps {

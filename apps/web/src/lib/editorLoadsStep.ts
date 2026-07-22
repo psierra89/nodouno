@@ -109,7 +109,7 @@ export function initEditorLoadsStep(options: EditorLoadsStepOptions) {
 
     const typologyLabel = document.createElement('label');
     typologyLabel.className = 'grid gap-8';
-    typologyLabel.innerHTML = '<span class="text-body-sm font-bold">Tipología CIRSOC 101</span>';
+    typologyLabel.innerHTML = '<span class="text-body-sm font-semibold">Tipología CIRSOC 101</span>';
     const typologySelect = document.createElement('select');
     typologySelect.className = 'cad-input';
     const emptyOpt = document.createElement('option');
@@ -135,7 +135,7 @@ export function initEditorLoadsStep(options: EditorLoadsStepOptions) {
 
     const deadLabel = document.createElement('label');
     deadLabel.className = 'grid gap-8';
-    deadLabel.innerHTML = '<span class="text-body-sm font-bold">Muerta adicional (kN/m²)</span>';
+    deadLabel.innerHTML = '<span class="text-body-sm font-semibold">Muerta adicional (kN/m²)</span>';
     const deadInput = document.createElement('input');
     deadInput.type = 'number';
     deadInput.min = '0';
@@ -154,7 +154,7 @@ export function initEditorLoadsStep(options: EditorLoadsStepOptions) {
     if (props.loadTypologyCode === 'CUSTOM') {
       const liveWrap = document.createElement('label');
       liveWrap.className = 'grid gap-8';
-      liveWrap.innerHTML = '<span class="text-body-sm font-bold">L viva manual (kN/m²)</span>';
+      liveWrap.innerHTML = '<span class="text-body-sm font-semibold">L viva manual (kN/m²)</span>';
       const liveInput = document.createElement('input');
       liveInput.type = 'number';
       liveInput.min = '0';

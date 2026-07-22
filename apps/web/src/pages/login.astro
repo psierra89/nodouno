@@ -1,37 +1,84 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
-import IconButton from '../components/IconButton.astro';
-import logoTr from '../../assets/logos/Tr-Fondo-Blanco.png';
+import logoDark from '../../assets/logos/Tr-Fondo-Negro.png';
 ---
-<Layout>
-  <main class="flex min-h-screen items-center justify-center bg-canvas-white px-16 py-31 text-obsidian md:px-23">
-    <section class="flex w-full max-w-[860px] flex-col items-center gap-22 rounded-3xl border border-obsidian px-22 py-31 text-center md:px-38 md:py-53">
-      <img src={logoTr.src} alt="Nodouno" class="h-auto w-[min(96px,22vw)]" />
-      <h1 id="auth-heading" class="text-[clamp(52px,9vw,187px)] leading-[0.8] tracking-[-0.02em]">Iniciar sesion</h1>
-      <p id="login-status" class="max-w-[52ch] text-slate-mist">Ingresa tu usuario y contrasena para continuar.</p>
-
-      <form id="login-form" class="flex w-full flex-col gap-13">
-        <div class="flex w-full flex-wrap justify-center gap-13">
-          <input id="login-email" type="email" placeholder="tu@email.com" class="min-w-[280px] flex-1 rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none outline-none focus:border-desert-sienna" />
-        </div>
-
-        <div class="flex w-full flex-wrap justify-center gap-13">
-          <input id="login-password" type="password" placeholder="Contrasena" class="min-w-[280px] flex-1 rounded-full border border-obsidian px-22 pt-15 pb-16 text-body-sm leading-none outline-none focus:border-desert-sienna" />
-        </div>
-
-        <div class="flex w-full justify-center">
-          <IconButton id="login-submit" type="submit" variant="primary" icon="log-in" label="Entrar" />
-        </div>
-      </form>
-
-      <p class="text-slate-mist">
-        <a id="auth-toggle-link" href="#" class="text-obsidian underline underline-offset-3">Crea una aqui.</a>
-      </p>
-
-      <a href="/" class="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border border-obsidian text-obsidian no-underline transition-colors hover:bg-obsidian hover:text-canvas-white" title="Volver al inicio" aria-label="Volver al inicio">
-        <Icon name="chevron-left" size={20} />
+<Layout title="Nodouno · Acceso">
+  <main class="grid min-h-screen bg-paper lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <aside class="blueprint-grid relative hidden flex-col justify-between bg-blueprint-deep p-38 text-canvas-white lg:flex">
+      <a href="/" class="inline-flex items-center gap-13 no-underline">
+        <img src={logoDark.src} alt="Nodo 1" class="h-[38px] w-auto" />
+        <span class="microlabel text-white/60">Servicios de Ingeniería Civil</span>
       </a>
+      <div>
+        <p class="microlabel text-white/50">Acceso a la plataforma</p>
+        <h2 class="mt-16 max-w-[16ch] font-display text-[clamp(32px,3vw,46px)] font-bold leading-[1.05] tracking-[-0.015em]">
+          Del plano al predimensionamiento en cuatro pasos.
+        </h2>
+        <ol class="mt-23 grid max-w-[42ch] gap-11 text-[14px] leading-[1.6] text-white/65" style="list-style: none; padding: 0; margin-top: 24px;">
+          <li class="flex gap-13"><span class="datum text-white/40">01</span> Especificaciones de materiales y reglamento</li>
+          <li class="flex gap-13"><span class="datum text-white/40">02</span> Dibujo de planta en editor CAD 2D</li>
+          <li class="flex gap-13"><span class="datum text-white/40">03</span> Asignación de cargas CIRSOC 101</li>
+          <li class="flex gap-13"><span class="datum text-white/40">04</span> Cálculo, armado e informe técnico</li>
+        </ol>
+      </div>
+      <p class="datum text-[11px] text-white/35">CIRSOC 201 · CIRSOC 101 · ADN 420</p>
+    </aside>
+
+    <section class="flex items-center justify-center px-23 py-38">
+      <div class="w-full max-w-[420px]">
+        <a href="/" class="mb-31 inline-flex items-center gap-11 text-slate-mist no-underline transition-colors hover:text-obsidian lg:hidden">
+          <Icon name="chevron-left" size={16} />
+          <span class="text-body-sm font-semibold">Volver al inicio</span>
+        </a>
+
+        <p class="microlabel">Nodouno · Acceso</p>
+        <h1 id="auth-heading" class="mt-11 font-display text-heading leading-heading tracking-heading font-bold">Iniciar sesión</h1>
+        <p id="login-status" class="mt-13 text-slate-mist" role="status" aria-live="polite">
+          Ingresa tu usuario y contraseña para continuar.
+        </p>
+
+        <form id="login-form" class="mt-31 grid gap-17">
+          <label class="grid gap-8">
+            <span class="microlabel text-obsidian">Email</span>
+            <input
+              id="login-email"
+              type="email"
+              autocomplete="email"
+              placeholder="tu@email.com"
+              class="w-full rounded-[6px] border border-line-strong bg-canvas-white px-15 py-13 text-body-sm text-obsidian outline-none transition-colors placeholder:text-slate-mist/60 focus:border-blueprint"
+            />
+          </label>
+          <label class="grid gap-8">
+            <span class="microlabel text-obsidian">Contraseña</span>
+            <input
+              id="login-password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="w-full rounded-[6px] border border-line-strong bg-canvas-white px-15 py-13 text-body-sm text-obsidian outline-none transition-colors placeholder:text-slate-mist/60 focus:border-blueprint"
+            />
+          </label>
+          <button
+            id="login-submit"
+            type="submit"
+            class="mt-8 inline-flex w-full items-center justify-center gap-8 rounded-[6px] border border-blueprint bg-blueprint px-21 py-15 text-body-sm font-semibold leading-none text-canvas-white transition-colors duration-150 hover:bg-blueprint-deep hover:border-blueprint-deep disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <span data-submit-label>Entrar</span>
+            <Icon name="log-in" size={16} />
+          </button>
+        </form>
+
+        <div class="mt-23 border-t border-line pt-21 text-slate-mist">
+          <span data-toggle-hint>¿No tienes cuenta?</span>
+          <a id="auth-toggle-link" href="#" class="font-semibold text-blueprint underline underline-offset-3">Crea una aquí.</a>
+        </div>
+
+        <a href="/" class="mt-38 hidden items-center gap-11 text-slate-mist no-underline transition-colors hover:text-obsidian lg:inline-flex">
+          <Icon name="chevron-left" size={16} />
+          <span class="text-body-sm font-semibold">Volver al inicio</span>
+        </a>
+      </div>
     </section>
   </main>
 
