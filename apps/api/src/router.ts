@@ -12,7 +12,9 @@ import {
   dimensioningSnapshotSchema,
   normalizeProjectSpecs,
   normalizeProjectStatus,
-  projectStatusSchema
+  projectSpecsSchema,
+  projectStatusSchema,
+  projectStatusForDb
 } from '@nodouno/shared';
 import type { TrpcContext } from './context';
 
@@ -28,6 +30,16 @@ const requireUser = t.middleware(({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Sesion requerida' });
   }
   return next({ ctx: { ...ctx, userId: ctx.userId } });
+});
+
+const projectPatchSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  drawing_data: z.unknown().optional(),
+  simplified_model: z.unknown().optional(),
+  calculations: z.unknown().optional(),
+  dimensioning: z.unknown().optional(),
+  specs: z.unknown().optional(),
+  status: projectStatusSchema.optional()
 });
 
 export const appRouter = t.router({
@@ -87,13 +99,7 @@ export const appRouter = t.router({
       .input(
         z.object({
           name: z.string().min(1).max(120),
-          specs: z
-            .object({
-              regulation: z.literal('CIRSOC_201'),
-              steel: z.literal('ADN_420'),
-              concrete: z.enum(['H25', 'H30', 'H35'])
-            })
-            .optional()
+          specs: projectSpecsSchema.optional()
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -117,25 +123,18 @@ export const appRouter = t.router({
       .input(
         z.object({
           id: z.string().uuid(),
-          patch: z
-            .object({
-              name: z.string().min(1).max(120).optional(),
-              drawing_data: z.unknown().optional(),
-              simplified_model: z.unknown().optional(),
-              calculations: z.unknown().optional(),
-              dimensioning: z.unknown().optional(),
-              specs: z.unknown().optional(),
-              status: projectStatusSchema.optional()
-            })
+          patch: projectPatchSchema
         })
       )
       .mutation(async ({ ctx, input }) => {
+        const patch = sanitizeProjectPatch(input.patch);
         const { error } = await ctx.supabaseAdmin
           .from('projects')
-          .update(input.patch as Record<string, unknown>)
+          .update(patch)
           .eq('id', input.id)
           .eq('user_id', ctx.userId);
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
+        await writeAuditLog(ctx, ctx.userId, input.id, 'project.updated', { keys: Object.keys(patch) });
         return { ok: true as const };
       }),
 
@@ -149,6 +148,7 @@ export const appRouter = t.router({
           .eq('id', input.id)
           .eq('user_id', ctx.userId);
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
+        await writeAuditLog(ctx, ctx.userId, input.id, 'project.deleted', {});
         return { ok: true as const };
       })
   }),
@@ -210,6 +210,7 @@ export const appRouter = t.router({
           .update({ current_revision_id: data!.id })
           .eq('id', input.projectId)
           .eq('user_id', ctx.userId);
+        await writeAuditLog(ctx, ctx.userId, input.projectId, 'revision.created', { revisionId: data!.id, version: nextVersion });
         return data!;
       })
   }),
@@ -220,20 +221,35 @@ export const appRouter = t.router({
       .input(z.object({ projectId: z.string().uuid(), revisionId: z.string().uuid().optional() }))
       .mutation(async ({ ctx, input }) => {
         await assertProjectOwned(ctx, input.projectId);
-        const { data: proj, error } = await ctx.supabaseAdmin
+        const { data: proj, error } = input.revisionId
+          ? await ctx.supabaseAdmin
+              .from('project_revisions')
+              .select('drawing_data, simplified_model, calculations, dimensioning')
+              .eq('id', input.revisionId)
+              .eq('project_id', input.projectId)
+              .maybeSingle()
+          : await ctx.supabaseAdmin
+              .from('projects')
+              .select('drawing_data, simplified_model, calculations, dimensioning, specs')
+              .eq('id', input.projectId)
+              .single();
+        if (error || !proj) throw new TRPCError({ code: 'NOT_FOUND', message: 'Proyecto no encontrado' });
+        const { data: projectMeta } = await ctx.supabaseAdmin
           .from('projects')
-          .select('drawing_data, simplified_model, calculations, dimensioning, specs')
+          .select('specs')
           .eq('id', input.projectId)
           .single();
-        if (error || !proj) throw new TRPCError({ code: 'NOT_FOUND', message: 'Proyecto no encontrado' });
         const snapshot = {
           exportedAt: new Date().toISOString(),
-          specs: proj.specs,
+          specs: normalizeProjectSpecs(projectMeta?.specs),
           drawing_data: proj.drawing_data,
           simplified_model: proj.simplified_model,
           calculations: proj.calculations,
           dimensioning: proj.dimensioning
         };
+        await writeAuditLog(ctx, ctx.userId, input.projectId, 'export.json', {
+          revisionId: input.revisionId ?? null
+        });
         return { kind: 'json' as const, snapshot };
       }),
 
@@ -276,6 +292,33 @@ async function assertProjectOwned(ctx: TrpcContext & { userId: string }, project
     .maybeSingle();
   if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message });
   if (!data) throw new TRPCError({ code: 'FORBIDDEN', message: 'Sin acceso al proyecto' });
+}
+
+function sanitizeProjectPatch(patch: z.infer<typeof projectPatchSchema>): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+  if (patch.name !== undefined) next.name = patch.name.trim();
+  if (patch.drawing_data !== undefined) next.drawing_data = patch.drawing_data;
+  if (patch.simplified_model !== undefined) next.simplified_model = normalizeBuildingInput(patch.simplified_model);
+  if (patch.calculations !== undefined) next.calculations = calculationsSnapshotSchema.parse(patch.calculations);
+  if (patch.dimensioning !== undefined) next.dimensioning = dimensioningSnapshotSchema.parse(patch.dimensioning);
+  if (patch.specs !== undefined) next.specs = normalizeProjectSpecs(patch.specs);
+  if (patch.status !== undefined) next.status = projectStatusForDb(patch.status);
+  return next;
+}
+
+async function writeAuditLog(
+  ctx: TrpcContext,
+  userId: string,
+  projectId: string,
+  action: string,
+  payload: Record<string, unknown>
+) {
+  await ctx.supabaseAdmin.from('audit_log').insert({
+    user_id: userId,
+    project_id: projectId,
+    action,
+    payload
+  });
 }
 
 export type AppRouter = typeof appRouter;

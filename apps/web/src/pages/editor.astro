@@ -311,6 +311,32 @@ import IconButton from '../components/IconButton.astro';
           >
             Seleccione un elemento en la vista para mostrar el detalle tecnico.
           </div>
+          <section class="grid gap-11 rounded-3xl border border-obsidian/20 p-16">
+            <div class="flex flex-wrap items-center justify-between gap-11">
+              <h5 class="text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Revisiones</h5>
+              <IconButton id="create-revision-btn" variant="ghost" size="sm" icon="save" label="Crear snapshot" />
+            </div>
+            <input
+              id="revision-comment-input"
+              type="text"
+              maxlength="120"
+              placeholder="Comentario opcional del snapshot"
+              class="cad-input"
+            />
+            <p id="revisions-status" class="text-body-sm text-slate-mist">Sincronizando revisiones...</p>
+            <div id="revisions-list" class="grid gap-8 text-body-sm text-slate-mist">
+              <p>No hay revisiones cargadas.</p>
+            </div>
+          </section>
+          <section class="grid gap-11 rounded-3xl border border-obsidian/20 p-16">
+            <div class="flex flex-wrap items-center justify-between gap-11">
+              <h5 class="text-body-sm font-bold uppercase tracking-[0.18em] text-slate-mist">Exportación</h5>
+              <IconButton id="export-json-btn" variant="ghost" size="sm" icon="download" label="Exportar JSON" />
+            </div>
+            <p id="export-status" class="text-body-sm text-slate-mist">
+              Exporta el snapshot actual o una revisión específica del proyecto.
+            </p>
+          </section>
         </aside>
       </div>
     </section>
@@ -366,6 +392,17 @@ import IconButton from '../components/IconButton.astro';
     import { createStructuralViewer3d } from '../lib/structuralViewer3d';
     import { renderTechnicalPanel, type CalcPipelineResults } from '../lib/technicalPanel';
     import {
+      createRevisionSnapshot,
+      exportProjectJson,
+      getProject,
+      listCatalogs,
+      listRevisions,
+      requireSession,
+      runServerCalc,
+      updateProject,
+      type ProjectDetail
+    } from '../lib/projectApi';
+    import {
       calculateDemands,
       calculateDesign,
       calculateLoads,
@@ -384,10 +421,8 @@ import IconButton from '../components/IconButton.astro';
       concreteStrengthMpa,
       liveLoadForTypology,
       normalizeProjectSpecs,
-      projectStatusForDb,
       type LoadTypologyCode
     } from '@nodouno/shared';
-    import { createTrpcClient, getPublicApiUrl } from '../lib/trpc';
 
     const sessionLabel = document.querySelector('#session-label');
     const logoutBtn = document.querySelector('#logout-btn');
@@ -401,6 +436,12 @@ import IconButton from '../components/IconButton.astro';
     const step4CalcStatus = document.querySelector<HTMLElement>('#step4-calc-status');
     const step4TechPanel = document.querySelector<HTMLElement>('#step4-tech-panel');
     const model3dContainer = document.querySelector<HTMLElement>('#model-3d-container');
+    const createRevisionBtn = document.querySelector<HTMLButtonElement>('#create-revision-btn');
+    const revisionCommentInput = document.querySelector<HTMLInputElement>('#revision-comment-input');
+    const revisionsStatus = document.querySelector<HTMLElement>('#revisions-status');
+    const revisionsList = document.querySelector<HTMLElement>('#revisions-list');
+    const exportJsonBtn = document.querySelector<HTMLButtonElement>('#export-json-btn');
+    const exportStatus = document.querySelector<HTMLElement>('#export-status');
     const loadsCanvas = document.querySelector<HTMLCanvasElement>('#loads-canvas');
     const loadsHudStatus = document.querySelector<HTMLElement>('#loads-hud-status');
     const loadsFitBtn = document.querySelector<HTMLButtonElement>('#loads-fit');
@@ -465,15 +506,7 @@ import IconButton from '../components/IconButton.astro';
     let selectedElementId: string | null = null;
     let selectedElementType: ElementType | null = null;
     let projectSpecs = DEFAULT_PROJECT_SPECS;
-    const apiUrl = getPublicApiUrl();
-    const preferApi = Boolean(apiUrl);
-
-    const getTrpcClient = () =>
-      createTrpcClient(async () => {
-        if (!supabase) return null;
-        const { data } = await supabase.auth.getSession();
-        return data.session?.access_token ?? null;
-      });
+    let lastRevisionId: string | undefined;
 
     const setEditorStatus = (message: string, isError = false) => {
       if (!editorStatus) return;
@@ -502,6 +535,20 @@ import IconButton from '../components/IconButton.astro';
       if (specConcrete) specConcrete.value = projectSpecs.concrete;
     };
 
+    const setRevisionsStatus = (message: string, isError = false) => {
+      if (!revisionsStatus) return;
+      revisionsStatus.textContent = message;
+      revisionsStatus.classList.toggle('text-desert-sienna', isError);
+      revisionsStatus.classList.toggle('text-slate-mist', !isError);
+    };
+
+    const setExportStatus = (message: string, isError = false) => {
+      if (!exportStatus) return;
+      exportStatus.textContent = message;
+      exportStatus.classList.toggle('text-desert-sienna', isError);
+      exportStatus.classList.toggle('text-slate-mist', !isError);
+    };
+
     let setStep: (step: 1 | 2 | 3 | 4) => Promise<void>;
 
     stepPills.forEach((pill) => {
@@ -511,38 +558,14 @@ import IconButton from '../components/IconButton.astro';
       });
     });
 
-    const isApiTransportError = (error: unknown) => {
-      const msg = error instanceof Error ? error.message : String(error);
-      return /JSON\.parse|unexpected character|Unexpected token|not valid JSON|Failed to fetch|NetworkError|405|401|403/i.test(
-        msg
-      );
-    };
-
-    const persistProjectViaSupabase = async (values: Record<string, unknown>) => {
-      if (!supabase) return { error: new Error('Cliente Supabase no inicializado.') };
-      const { error } = await supabase.from('projects').update(values).eq('id', activeProjectId);
-      return { error: error ? new Error(error.message) : null };
-    };
-
     const persistProject = async (values: Record<string, unknown>) => {
       if (!activeProjectId) return { error: new Error('Proyecto no seleccionado.') };
-      if (preferApi) {
-        const client = getTrpcClient();
-        if (!client) return { error: new Error('API configurada pero cliente no inicializado.') };
-        try {
-          await client.projects.update.mutate({ id: activeProjectId, patch: values });
-          return { error: null };
-        } catch (error) {
-          // Azure/IIS a veces bloquea POST en /trpc (HTML 405) → el cliente tRPC falla al parsear JSON.
-          if (supabase && isApiTransportError(error)) {
-            const fallback = await persistProjectViaSupabase(values);
-            if (!fallback.error) return { error: null };
-            return { error: fallback.error };
-          }
-          return { error: error instanceof Error ? error : new Error(String(error)) };
-        }
+      try {
+        await updateProject(activeProjectId, values);
+        return { error: null };
+      } catch (error) {
+        return { error: error instanceof Error ? error : new Error(String(error)) };
       }
-      return persistProjectViaSupabase(values);
     };
 
     let persistDrawingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1084,6 +1107,37 @@ import IconButton from '../components/IconButton.astro';
       );
     };
 
+    const renderRevisionItems = async () => {
+      if (!activeProjectId || !revisionsList) return;
+      try {
+        setRevisionsStatus('Cargando revisiones...');
+        const revisions = await listRevisions(activeProjectId);
+        if (revisions.length === 0) {
+          revisionsList.innerHTML = '<p class="text-slate-mist">Aun no hay snapshots guardados.</p>';
+          setRevisionsStatus('Sin revisiones todavía.');
+          return;
+        }
+        revisionsList.innerHTML = revisions
+          .map(
+            (revision) => `
+              <button
+                type="button"
+                class="rounded-3xl border border-obsidian/20 px-16 py-13 text-left transition-colors hover:border-obsidian"
+                data-export-revision-id="${revision.id}"
+              >
+                <strong class="block text-obsidian">v${revision.version}</strong>
+                <span class="block text-slate-mist">${revision.comment?.trim() || 'Sin comentario'} · ${revision.created_at ? new Date(revision.created_at).toLocaleString() : 'fecha desconocida'}</span>
+              </button>
+            `
+          )
+          .join('');
+        setRevisionsStatus('Snapshots disponibles.');
+      } catch (error) {
+        revisionsList.innerHTML = '<p class="text-slate-mist">Las revisiones requieren API disponible.</p>';
+        setRevisionsStatus((error as Error).message, true);
+      }
+    };
+
     const onStructuralSelect = (elementId: string, elementType: ElementType) => {
       selectedElementId = elementId;
       selectedElementType = elementType;
@@ -1135,7 +1189,7 @@ import IconButton from '../components/IconButton.astro';
       if (activeProjectId && simplifiedModel) {
         await persistProject({
           simplified_model: simplifiedModel,
-          status: projectStatusForDb('loaded')
+          status: 'loaded'
         });
       }
       return Boolean(simplifiedModel);
@@ -1209,11 +1263,29 @@ import IconButton from '../components/IconButton.astro';
     if (!supabase) {
       window.location.href = '/login';
     } else {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
+      try {
+        const session = await requireSession();
+        if (sessionLabel) {
+          sessionLabel.textContent = `Sesion como ${session.user.email ?? 'usuario'}.`;
+        }
+        const catalogs = await listCatalogs();
+        if (specRegulation) {
+          specRegulation.innerHTML = catalogs.regulations
+            .map((item) => `<option value="${item.code}">${item.name}</option>`)
+            .join('');
+        }
+        if (specSteel) {
+          specSteel.innerHTML = catalogs.steel
+            .map((item) => `<option value="${item.code}">${item.code}</option>`)
+            .join('');
+        }
+        if (specConcrete) {
+          specConcrete.innerHTML = catalogs.concrete
+            .map((item) => `<option value="${item.code}">${item.code}</option>`)
+            .join('');
+        }
+      } catch {
         window.location.href = '/login';
-      } else if (sessionLabel) {
-        sessionLabel.textContent = `Sesion como ${data.session.user.email ?? 'usuario'}.`;
       }
     }
 
@@ -1228,35 +1300,11 @@ import IconButton from '../components/IconButton.astro';
 
     let initialDrawing: DrawingState | null = null;
     if (activeProjectId) {
-      let projectData:
-        | {
-            name?: string | null;
-            specs?: unknown;
-            drawing_data?: unknown;
-            simplified_model?: unknown;
-            calculations?: unknown;
-            dimensioning?: unknown;
-          }
-        | null
-        | undefined;
-      if (preferApi) {
-        const client = getTrpcClient();
-        if (!client) {
-          setEditorStatus('API configurada pero cliente no inicializado.', true);
-        } else {
-          try {
-            projectData = await client.projects.get.query({ id: activeProjectId });
-          } catch (error) {
-            setEditorStatus(`No se pudo cargar el proyecto (API): ${(error as Error).message ?? error}`, true);
-          }
-        }
-      } else if (supabase) {
-        const { data } = await supabase
-          .from('projects')
-          .select('name, specs, drawing_data, simplified_model, calculations, dimensioning')
-          .eq('id', activeProjectId)
-          .maybeSingle();
-        projectData = data;
+      let projectData: ProjectDetail | null | undefined;
+      try {
+        projectData = await getProject(activeProjectId);
+      } catch (error) {
+        setEditorStatus(`No se pudo cargar el proyecto: ${(error as Error).message ?? error}`, true);
       }
 
       projectSpecs = normalizeProjectSpecs(projectData?.specs);
@@ -1278,6 +1326,7 @@ import IconButton from '../components/IconButton.astro';
           setStep4CalcStatus('Resultados cargados desde proyecto.');
         }
       }
+      await renderRevisionItems();
     }
 
     if (canvas) {
@@ -1401,6 +1450,34 @@ import IconButton from '../components/IconButton.astro';
       setEditorStatus('Dibujo 2D guardado.');
     });
 
+    createRevisionBtn?.addEventListener('click', async () => {
+      if (!activeProjectId || !editor) return;
+      const snapshot = {
+        drawing_data: {
+          ...editor.getState(),
+          createdAt: new Date().toISOString(),
+          freeDrawing: toLegacyFreeDrawing(editor.getState())
+        },
+        simplified_model: simplifiedModel ?? undefined,
+        calculations: pipelineResults?.calculations,
+        dimensioning: pipelineResults?.dimensioning
+      };
+      try {
+        setRevisionsStatus('Creando snapshot...');
+        const result = await createRevisionSnapshot({
+          projectId: activeProjectId,
+          comment: revisionCommentInput?.value.trim() || undefined,
+          ...snapshot
+        });
+        lastRevisionId = result.id;
+        if (revisionCommentInput) revisionCommentInput.value = '';
+        setRevisionsStatus(`Snapshot v${result.version} creado.`);
+        await renderRevisionItems();
+      } catch (error) {
+        setRevisionsStatus((error as Error).message, true);
+      }
+    });
+
     clearDrawingBtn?.addEventListener('click', () => {
       if (!editor) return;
       editor.setState(
@@ -1414,6 +1491,29 @@ import IconButton from '../components/IconButton.astro';
       );
       renderPropertiesPanel();
       setEditorStatus('Dibujo limpiado.');
+    });
+
+    revisionsList?.addEventListener('click', async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const revisionButton = target.closest<HTMLElement>('[data-export-revision-id]');
+      const revisionId = revisionButton?.dataset.exportRevisionId;
+      if (!revisionId || !activeProjectId) return;
+      try {
+        setExportStatus('Exportando revisión...');
+        const result = await exportProjectJson(activeProjectId, revisionId);
+        lastRevisionId = revisionId;
+        const blob = new Blob([JSON.stringify(result.snapshot, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${activeProjectName ?? 'proyecto'}-revision-${revisionId.slice(-6)}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        setExportStatus('Revisión exportada.');
+      } catch (error) {
+        setExportStatus((error as Error).message, true);
+      }
     });
 
     runCalcBtn?.addEventListener('click', async () => {
@@ -1446,18 +1546,10 @@ import IconButton from '../components/IconButton.astro';
       if (runCalcBtn) runCalcBtn.disabled = true;
 
       let result: CalcPipelineResults | null = null;
-      const client = getTrpcClient();
-      if (preferApi && client) {
-        try {
-          result = await client.calc.runPipeline.mutate({ simplifiedModel: model });
-        } catch (error) {
-          if (!isApiTransportError(error)) {
-            setEditorStatus(`Error de cálculo (API): ${(error as Error).message}`, true);
-            setStep4CalcStatus('Error en el cálculo.', true);
-            if (runCalcBtn) runCalcBtn.disabled = false;
-            return;
-          }
-        }
+      try {
+        result = await runServerCalc(model);
+      } catch (error) {
+        setEditorStatus(`Fallback a cálculo local: ${(error as Error).message}`, true);
       }
       if (!result) {
         const loads = calculateLoads(model);
@@ -1488,6 +1580,24 @@ import IconButton from '../components/IconButton.astro';
       }
       refreshTechnicalPanel();
       if (runCalcBtn) runCalcBtn.disabled = false;
+    });
+
+    exportJsonBtn?.addEventListener('click', async () => {
+      if (!activeProjectId) return;
+      try {
+        setExportStatus('Exportando snapshot actual...');
+        const result = await exportProjectJson(activeProjectId, lastRevisionId);
+        const blob = new Blob([JSON.stringify(result.snapshot, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${activeProjectName ?? 'proyecto'}${lastRevisionId ? `-revision-${lastRevisionId.slice(-6)}` : '-actual'}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        setExportStatus('Exportación lista.');
+      } catch (error) {
+        setExportStatus((error as Error).message, true);
+      }
     });
 
     prevStepBtn?.addEventListener('click', () => {

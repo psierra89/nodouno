@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { normalizeBuildingInput } from '@nodouno/calc';
 import type { BeamInput, BuildingInput, ColumnInput, SlabInput } from '@nodouno/calc';
 import type { ElementType } from '@nodouno/calc';
@@ -26,6 +27,14 @@ type SelectableUserData = {
   elementId: string;
   elementType: ElementType;
 };
+
+function makeLabel(text: string): CSS2DObject {
+  const div = document.createElement('div');
+  div.textContent = text;
+  div.style.cssText =
+    'padding:4px 10px;border:1px solid rgba(0,13,16,0.18);border-radius:9999px;background:rgba(255,255,255,0.92);font:700 12px/1.2 system-ui,sans-serif;color:#000d10;pointer-events:none;';
+  return new CSS2DObject(div);
+}
 
 function disposeMesh(mesh: THREE.Mesh) {
   mesh.geometry.dispose();
@@ -135,8 +144,7 @@ function createBeamMesh(beam: BeamInput, index: number, slabTopY: number): THREE
 function createColumnMesh(
   col: ColumnInput,
   index: number,
-  position: [number, number],
-  slabTopY: number
+  position: [number, number]
 ): THREE.Mesh {
   const w = Math.max(0.15, col.widthM);
   const d = Math.max(0.15, col.depthM);
@@ -178,6 +186,13 @@ export function createStructuralViewer3d(
   renderer.domElement.style.touchAction = 'none';
   container.appendChild(renderer.domElement);
 
+  const labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(width, height);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.inset = '0';
+  labelRenderer.domElement.style.pointerEvents = 'none';
+  container.appendChild(labelRenderer.domElement);
+
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -210,6 +225,7 @@ export function createStructuralViewer3d(
     for (const obj of snapshot) {
       root.remove(obj);
       if (obj instanceof THREE.Mesh) disposeMesh(obj);
+      else if (obj instanceof CSS2DObject) obj.element.remove();
     }
   };
 
@@ -234,6 +250,11 @@ export function createStructuralViewer3d(
       const mesh = createSlabMesh(slab, slabTopY, SLAB_COLORS[idx % SLAB_COLORS.length]!);
       root.add(mesh);
       selectableMeshes.push(mesh);
+      const label = makeLabel(`Losa ${slab.id.slice(-4)}`);
+      const pts = slabPoints(slab);
+      const centroid = pts.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), { x: 0, y: 0 });
+      label.position.set(centroid.x / pts.length, slabTopY + 0.35 + idx * 0.05, centroid.y / pts.length);
+      root.add(label);
     });
 
     model.beams.forEach((beam, idx) => {
@@ -241,6 +262,9 @@ export function createStructuralViewer3d(
       if (mesh) {
         root.add(mesh);
         selectableMeshes.push(mesh);
+        const label = makeLabel(`Viga ${beamIdFromMesh(mesh).slice(-4)}`);
+        label.position.copy(mesh.position).add(new THREE.Vector3(0, 0.28, 0));
+        root.add(label);
       }
     });
 
@@ -260,9 +284,12 @@ export function createStructuralViewer3d(
         px = corner[0];
         pz = corner[1];
       }
-      const mesh = createColumnMesh(col, idx, [px, pz], slabTopY);
+      const mesh = createColumnMesh(col, idx, [px, pz]);
       root.add(mesh);
       selectableMeshes.push(mesh);
+      const label = makeLabel(`Col ${String(idx + 1).padStart(2, '0')}`);
+      label.position.set(px, columnHeightM(col) + 0.4, pz);
+      root.add(label);
     });
 
     fitCamera(model);
@@ -322,8 +349,19 @@ export function createStructuralViewer3d(
     if (selectedId) selectElement(selectedId, selectedType);
   };
 
-  const setResultsVisible = (_visible: boolean) => {
-    /* reservado para overlays futuros */
+  const setResultsVisible = (visible: boolean) => {
+    for (const mesh of selectableMeshes) {
+      const material = mesh.material as THREE.MeshStandardMaterial;
+      if (!visible) {
+        material.opacity = 0.92;
+        material.transparent = mesh.userData.elementType === 'slab';
+        continue;
+      }
+      if (mesh.userData.elementType === 'beam') material.color.setHex(0x22353a);
+      if (mesh.userData.elementType === 'column') material.color.setHex(0xa55d45);
+      material.opacity = 1;
+      material.transparent = false;
+    }
   };
 
   setModel(initialModel);
@@ -333,6 +371,7 @@ export function createStructuralViewer3d(
     raf = window.requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
   };
   animate();
 
@@ -342,6 +381,7 @@ export function createStructuralViewer3d(
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    labelRenderer.setSize(w, h);
   };
 
   const ro = new ResizeObserver(() => resize());
@@ -353,9 +393,14 @@ export function createStructuralViewer3d(
     renderer.domElement.removeEventListener('pointerdown', onPointerDown);
     controls.dispose();
     renderer.dispose();
+    labelRenderer.domElement.remove();
     clearRoot();
     renderer.domElement.remove();
   };
 
   return { dispose, setModel, setResultsVisible, selectElement, resize };
+}
+
+function beamIdFromMesh(mesh: THREE.Mesh): string {
+  return ((mesh.userData as SelectableUserData).elementId || 'beam').toString();
 }

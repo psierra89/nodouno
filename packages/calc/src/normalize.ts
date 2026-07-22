@@ -70,7 +70,7 @@ function normalizeBeam(raw: unknown, index: number, globalTributary: number): Be
   let slabContributions: BeamInput['slabContributions'] = [];
   if (Array.isArray(raw.slabContributions)) {
     slabContributions = raw.slabContributions
-      .map((c, ci) => {
+      .map((c) => {
         if (!isRecord(c)) return null;
         const slabId = typeof c.slabId === 'string' ? c.slabId : '';
         const tributaryWidthM = toNumber(c.tributaryWidthM, globalTributary);

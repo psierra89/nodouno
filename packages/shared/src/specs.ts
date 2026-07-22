@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export type RegulationCode = 'CIRSOC_201';
 export type SteelGrade = 'ADN_420';
 export type ConcreteGrade = 'H25' | 'H30' | 'H35';
@@ -13,6 +15,12 @@ export const DEFAULT_PROJECT_SPECS: ProjectSpecs = {
   steel: 'ADN_420',
   concrete: 'H30'
 };
+
+export const projectSpecsSchema = z.object({
+  regulation: z.literal('CIRSOC_201'),
+  steel: z.literal('ADN_420'),
+  concrete: z.enum(['H25', 'H30', 'H35'])
+});
 
 export const normalizeProjectSpecs = (value: unknown): ProjectSpecs => {
   const obj = value && typeof value === 'object' ? (value as Record<string, unknown>) : null;

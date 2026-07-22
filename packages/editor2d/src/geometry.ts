@@ -7,6 +7,13 @@ export interface BoundingBox {
   maxY: number;
 }
 
+export interface RectBox {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 export function entityBoundingBox(entity: Entity): BoundingBox {
   if (entity.type === 'column') {
     const hw = entity.widthM / 2;
@@ -44,6 +51,15 @@ export function bboxIntersects(a: BoundingBox, b: BoundingBox): boolean {
   return !(a.maxX < b.minX || a.minX > b.maxX || a.maxY < b.minY || a.minY > b.maxY);
 }
 
+export function bboxContains(outer: RectBox, inner: BoundingBox): boolean {
+  return (
+    inner.minX >= outer.minX &&
+    inner.maxX <= outer.maxX &&
+    inner.minY >= outer.minY &&
+    inner.maxY <= outer.maxY
+  );
+}
+
 export function distancePointToSegment(
   point: { x: number; y: number },
   a: { x: number; y: number },
@@ -57,6 +73,30 @@ export function distancePointToSegment(
   const px = a.x + t * dx;
   const py = a.y + t * dy;
   return Math.hypot(point.x - px, point.y - py);
+}
+
+export function segmentIntersection(
+  a1: { x: number; y: number },
+  a2: { x: number; y: number },
+  b1: { x: number; y: number },
+  b2: { x: number; y: number }
+): { x: number; y: number } | null {
+  const dax = a2.x - a1.x;
+  const day = a2.y - a1.y;
+  const dbx = b2.x - b1.x;
+  const dby = b2.y - b1.y;
+  const denom = dax * dby - day * dbx;
+  if (Math.abs(denom) < 1e-9) return null;
+
+  const dx = b1.x - a1.x;
+  const dy = b1.y - a1.y;
+  const ua = (dx * dby - dy * dbx) / denom;
+  const ub = (dx * day - dy * dax) / denom;
+  if (ua < 0 || ua > 1 || ub < 0 || ub > 1) return null;
+  return {
+    x: a1.x + ua * dax,
+    y: a1.y + ua * day
+  };
 }
 
 export function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>): boolean {

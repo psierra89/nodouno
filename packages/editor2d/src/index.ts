@@ -24,6 +24,7 @@ import {
   zoomAtCursor
 } from './camera';
 import {
+  bboxContains,
   entityBoundingBox,
   findEntity,
   hitTest,
@@ -128,6 +129,12 @@ interface PanState {
   lastClientY: number;
 }
 
+interface SelectionBoxState {
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+  pointerId: number;
+}
+
 interface BeamDraftState {
   start: { x: number; y: number };
 }
@@ -185,6 +192,7 @@ export function mountEditor2d(
   let beamDraft: BeamDraftState | null = null;
   let columnDraft: ColumnDraftState | null = null;
   let slabDraft: SlabDraftState | null = null;
+  let selectionBox: SelectionBoxState | null = null;
 
   let columnSection = { ...DEFAULT_COLUMN_SECTION, ...(options.columnSection ?? {}) };
   let beamSection = { ...DEFAULT_BEAM_SECTION, ...(options.beamSection ?? {}) };
@@ -237,7 +245,8 @@ export function mountEditor2d(
     preview,
     snap: snapResult,
     cursorWorld,
-    showCrosshair
+    showCrosshair,
+    selectionBox
   };
 
   const loop = () => {
@@ -256,6 +265,7 @@ export function mountEditor2d(
     renderProps.snap = snapResult;
     renderProps.cursorWorld = cursorWorld;
     renderProps.showCrosshair = showCrosshair;
+    renderProps.selectionBox = selectionBox;
     render(ctx, renderProps);
     emitHud();
   };
@@ -431,6 +441,39 @@ export function mountEditor2d(
     canvas.style.cursor = 'crosshair';
   };
 
+  const normalizedSelectionBounds = () => {
+    if (!selectionBox) return null;
+    return {
+      minX: Math.min(selectionBox.start.x, selectionBox.current.x),
+      minY: Math.min(selectionBox.start.y, selectionBox.current.y),
+      maxX: Math.max(selectionBox.start.x, selectionBox.current.x),
+      maxY: Math.max(selectionBox.start.y, selectionBox.current.y)
+    };
+  };
+
+  const selectWithinSelectionBox = () => {
+    const bounds = normalizedSelectionBounds();
+    if (!bounds) return;
+    const refs: EntityRef[] = [];
+    for (const entity of [
+      ...state.entities.columns,
+      ...state.entities.beams,
+      ...state.entities.slabs
+    ]) {
+      if (bboxContains(bounds, entityBoundingBox(entity))) {
+        refs.push({ type: entity.type, id: entity.id });
+      }
+    }
+    selection.clear();
+    for (const ref of refs) selection.add(ref.id);
+    statusMessage =
+      refs.length > 0
+        ? `${refs.length} elemento(s) seleccionado(s) por ventana.`
+        : 'No se seleccionaron elementos en la ventana.';
+    emitSelectionChange();
+    emitHud();
+  };
+
   const onPointerDown = (e: PointerEvent) => {
     canvas.focus();
     if (e.button === 1 || (e.button === 0 && (spaceHeld || tool === 'pan'))) {
@@ -467,6 +510,12 @@ export function mountEditor2d(
           statusMessage = 'Seleccione una losa en planta.';
         } else {
           if (!e.shiftKey) selection.clear();
+          selectionBox = { start: { ...point }, current: { ...point }, pointerId: e.pointerId };
+          try {
+            canvas.setPointerCapture(e.pointerId);
+          } catch {
+            /* noop */
+          }
           statusMessage = STATUS_MESSAGES[tool];
         }
       }
@@ -547,6 +596,12 @@ export function mountEditor2d(
       invalidate();
       return;
     }
+    if (selectionBox && selectionBox.pointerId === e.pointerId) {
+      selectionBox.current = { ...point };
+      invalidate();
+      emitHud();
+      return;
+    }
 
     if (tool === 'select') {
       const ref = pickAtPoint(point, 8 / cam.zoom);
@@ -606,6 +661,20 @@ export function mountEditor2d(
       }
       dragMove = null;
       updateCursorStyle();
+    }
+    if (selectionBox && selectionBox.pointerId === e.pointerId) {
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        /* noop */
+      }
+      const dx = Math.abs(selectionBox.current.x - selectionBox.start.x);
+      const dy = Math.abs(selectionBox.current.y - selectionBox.start.y);
+      if (dx > 0.05 || dy > 0.05) {
+        selectWithinSelectionBox();
+      }
+      selectionBox = null;
+      invalidate();
     }
   };
 
@@ -920,6 +989,7 @@ export function mountEditor2d(
   const clearSelection = () => {
     if (selection.size === 0) return;
     selection.clear();
+    selectionBox = null;
     invalidate();
     emitHud();
     emitSelectionChange();
