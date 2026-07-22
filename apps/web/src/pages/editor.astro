@@ -337,7 +337,7 @@ import IconButton from '../components/IconButton.astro';
               </div>
             </div>
             <p id="export-status" class="text-body-sm text-slate-mist">
-              Exporta JSON o un informe PDF del snapshot actual del proyecto.
+              Exporta JSON o un informe PDF (API) del snapshot actual o de una revisión.
             </p>
           </section>
         </aside>
@@ -399,7 +399,9 @@ import IconButton from '../components/IconButton.astro';
     import { initEditorRevisionsPanel } from '../lib/editorRevisionsPanel';
     import { renderTechnicalPanel, type CalcPipelineResults } from '../lib/technicalPanel';
     import {
+      downloadBase64File,
       exportProjectJson,
+      exportProjectPdf,
       getProject,
       listCatalogs,
       requireSession,
@@ -1318,19 +1320,27 @@ import IconButton from '../components/IconButton.astro';
       }
     });
 
-    exportPdfBtn?.addEventListener('click', () => {
+    exportPdfBtn?.addEventListener('click', async () => {
       if (!activeProjectId) return;
+      const lastRevisionId = revisionsPanel?.getLastRevisionId();
       try {
-        setExportStatus('Generando informe PDF...');
-        downloadTechnicalReportPdf({
-          projectName: activeProjectName ?? 'Proyecto',
-          specs: projectSpecs,
-          model: simplifiedModel,
-          results: pipelineResults
-        });
-        setExportStatus('Informe PDF descargado.');
+        setExportStatus('Generando informe PDF en servidor...');
+        const result = await exportProjectPdf(activeProjectId, lastRevisionId);
+        downloadBase64File(result.filename, result.contentBase64, result.mimeType);
+        setExportStatus('Informe PDF descargado desde API.');
       } catch (error) {
-        setExportStatus((error as Error).message, true);
+        try {
+          setExportStatus('API no disponible. Generando PDF local...');
+          downloadTechnicalReportPdf({
+            projectName: activeProjectName ?? 'Proyecto',
+            specs: projectSpecs,
+            model: simplifiedModel,
+            results: pipelineResults
+          });
+          setExportStatus(`PDF local listo. API: ${(error as Error).message}`);
+        } catch (fallbackError) {
+          setExportStatus((fallbackError as Error).message, true);
+        }
       }
     });
 
