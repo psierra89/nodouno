@@ -23,7 +23,8 @@ export async function initDashboardPage() {
   let lastProjects: ProjectSummary[] = [];
   let pendingDeleteId: string | null = null;
 
-  const projectCardClass = 'rounded-3xl border border-obsidian bg-canvas-white p-22 text-left shadow-none';
+  const projectCardClass =
+    'panel p-21 text-left transition-colors hover:border-line-strong';
 
   const setProjectsMessage = (message: string) => {
     if (projectsList) {
@@ -61,23 +62,26 @@ export async function initDashboardPage() {
       if (pendingDeleteId === project.id) {
         card.innerHTML = `
           <div class="space-y-16">
-            <p class="text-body-sm font-bold text-obsidian">¿Eliminar este proyecto de forma permanente? Esta accion no se puede deshacer.</p>
+            <p class="text-body-sm font-semibold text-desert-sienna">¿Eliminar este proyecto de forma permanente? Esta acción no se puede deshacer.</p>
             <div class="flex flex-wrap gap-11">
-              ${iconButtonHtml('x', 'Cancelar eliminacion', 'text-obsidian hover:bg-obsidian hover:text-canvas-white', { 'data-cancel-delete': '1' })}
-              ${iconButtonHtml('check', 'Confirmar eliminacion', 'text-obsidian hover:bg-desert-sienna hover:text-canvas-white', { 'data-confirm-delete': project.id })}
+              ${iconButtonHtml('x', 'Cancelar eliminacion', 'text-obsidian hover:border-obsidian hover:bg-obsidian hover:text-canvas-white', { 'data-cancel-delete': '1' })}
+              ${iconButtonHtml('check', 'Confirmar eliminacion', 'border-desert-sienna text-desert-sienna hover:bg-desert-sienna hover:text-canvas-white', { 'data-confirm-delete': project.id })}
             </div>
           </div>
         `;
       } else {
         card.innerHTML = `
-          <div class="flex flex-wrap items-start justify-between gap-13">
-            <div class="space-y-11">
-              <h3 class="text-subheading leading-subheading tracking-subheading font-bold text-obsidian">${title}</h3>
-              <p class="text-slate-mist">Estado: ${statusLabel}</p>
+          <div class="flex flex-wrap items-center justify-between gap-13">
+            <div class="min-w-0">
+              <h3 class="font-display text-subheading leading-subheading font-semibold text-obsidian">${title}</h3>
+              <p class="mt-4 flex items-center gap-8 text-slate-mist">
+                <span class="microlabel">Estado</span>
+                <span class="datum text-[12px] text-obsidian">${statusLabel}</span>
+              </p>
             </div>
             <div class="flex flex-wrap gap-11">
-              ${iconButtonHtml('folder-open', 'Abrir proyecto', 'bg-obsidian text-canvas-white hover:opacity-90', { 'data-open-id': project.id })}
-              ${iconButtonHtml('trash', 'Eliminar proyecto', 'text-obsidian hover:bg-obsidian hover:text-canvas-white', { 'data-request-delete': project.id })}
+              ${iconButtonHtml('folder-open', 'Abrir proyecto', 'border-blueprint bg-blueprint text-canvas-white hover:bg-blueprint-deep hover:border-blueprint-deep', { 'data-open-id': project.id })}
+              ${iconButtonHtml('trash', 'Eliminar proyecto', 'text-obsidian hover:border-obsidian hover:bg-obsidian hover:text-canvas-white', { 'data-request-delete': project.id })}
             </div>
           </div>
         `;

@@ -11,9 +11,9 @@ export interface GridStyle {
 }
 
 const DEFAULT_STYLE: GridStyle = {
-  minor: '#ececef',
-  major: '#cdcdd2',
-  axis: '#8e8e95'
+  minor: '#eef1f4',
+  major: '#d4dbe2',
+  axis: '#9fadba'
 };
 
 const MAX_LINES_PER_AXIS = 4000;

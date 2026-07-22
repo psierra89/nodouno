@@ -1,36 +1,53 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import IconButton from '../components/IconButton.astro';
+import logoLight from '../../assets/logos/Tr-Fondo-Blanco.png';
 ---
-<Layout>
-  <main class="min-h-screen bg-canvas-white px-16 py-31 text-obsidian md:px-23">
-    <section class="mx-auto w-full max-w-[1100px] rounded-3xl border border-obsidian p-22">
-      <div class="mb-31 flex flex-col items-center gap-16 text-center">
-        <h1 class="text-heading leading-heading tracking-heading">Dashboard</h1>
-        <IconButton id="logout-btn" variant="dark" icon="log-out" label="Cerrar sesion" />
+<Layout title="Nodouno · Proyectos">
+  <main class="flex min-h-screen flex-col bg-paper text-obsidian">
+    <header class="flex items-center justify-between border-b border-line bg-canvas-white px-31 py-13">
+      <div class="flex items-center gap-13">
+        <a href="/" class="inline-flex items-center no-underline">
+          <img src={logoLight.src} alt="Nodo 1" class="h-[30px] w-auto" />
+        </a>
+        <span class="h-[22px] w-px bg-line" aria-hidden="true"></span>
+        <span class="microlabel">Proyectos</span>
       </div>
-      <p id="session-label" class="mx-auto max-w-3xl text-center text-slate-mist">Comprobando sesion...</p>
-      <section class="mt-23 rounded-3xl border border-obsidian p-22">
-        <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Nuevo proyecto</h2>
-        <form id="new-project-form" class="mt-16 flex flex-col gap-13 md:flex-row md:items-end">
+      <div class="flex items-center gap-16">
+        <p id="session-label" class="hidden text-slate-mist md:block">Comprobando sesión...</p>
+        <IconButton id="logout-btn" variant="ghost" icon="log-out" label="Cerrar sesión" />
+      </div>
+    </header>
+
+    <div class="mx-auto w-full max-w-[1100px] flex-1 px-23 py-38">
+      <div class="flex flex-wrap items-end justify-between gap-16">
+        <div>
+          <p class="microlabel">Panel de control</p>
+          <h1 class="mt-8 font-display text-heading leading-heading tracking-heading font-bold">Tus proyectos</h1>
+        </div>
+      </div>
+
+      <section class="panel mt-23 p-23" aria-labelledby="new-project-heading">
+        <h2 id="new-project-heading" class="microlabel text-obsidian">Nuevo proyecto</h2>
+        <form id="new-project-form" class="mt-16 flex flex-col gap-16 md:flex-row md:items-end">
           <label class="flex-1 text-left">
-            <span class="mb-11 block text-body-sm font-bold">Nombre del proyecto</span>
+            <span class="mb-8 block text-body-sm font-semibold">Nombre del proyecto</span>
             <input
               id="project-name-input"
               name="projectName"
               type="text"
               maxlength="80"
               placeholder="Ej: Edificio oficinas norte"
-              class="w-full rounded-full border border-obsidian bg-canvas-white px-22 pt-15 pb-16 text-body-sm text-obsidian outline-none focus:border-desert-sienna"
+              class="w-full rounded-[6px] border border-line-strong bg-canvas-white px-15 py-13 text-body-sm text-obsidian outline-none transition-colors placeholder:text-slate-mist/60 focus:border-blueprint"
               required
             />
           </label>
           <label class="text-left">
-            <span class="mb-11 block text-body-sm font-bold">Hormigon</span>
+            <span class="mb-8 block text-body-sm font-semibold">Hormigón</span>
             <select
               id="project-concrete-select"
               name="projectConcrete"
-              class="w-full rounded-full border border-obsidian bg-canvas-white px-22 pt-15 pb-16 text-body-sm text-obsidian outline-none focus:border-desert-sienna"
+              class="datum w-full rounded-[6px] border border-line-strong bg-canvas-white px-15 py-13 text-body-sm text-obsidian outline-none transition-colors focus:border-blueprint md:w-[120px]"
             >
               <option value="H25">H25</option>
               <option value="H30" selected>H30</option>
@@ -42,17 +59,21 @@ import IconButton from '../components/IconButton.astro';
             <IconButton id="reset-project-form-btn" type="button" variant="ghost" icon="eraser" label="Limpiar formulario" />
           </div>
         </form>
-        <p id="project-form-status" class="mt-11 text-slate-mist" role="status" aria-live="polite">
+        <p id="project-form-status" class="mt-13 text-slate-mist" role="status" aria-live="polite">
           Completa el nombre para crear un proyecto nuevo.
         </p>
       </section>
-      <section class="mt-38 text-center">
-        <h2 class="text-heading-sm leading-heading-sm tracking-heading-sm">Tus proyectos</h2>
-        <div id="projects-list" class="mt-22 grid gap-13">
+
+      <section class="mt-31" aria-labelledby="projects-heading">
+        <div class="flex items-center justify-between border-b border-line-strong pb-11">
+          <h2 id="projects-heading" class="microlabel text-obsidian">Registro de proyectos</h2>
+          <span class="microlabel">Nombre · Estado · Acciones</span>
+        </div>
+        <div id="projects-list" class="mt-16 grid gap-13">
           <p class="text-slate-mist">Cargando proyectos...</p>
         </div>
       </section>
-    </section>
+    </div>
   </main>
   <script>
     import { initDashboardPage } from '../lib/dashboardPage';

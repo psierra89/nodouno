@@ -93,12 +93,12 @@ export function iconSvg(name: IconName, size = 20): string {
 }
 
 export const iconButtonClass =
-  'inline-flex items-center justify-center rounded-full border border-obsidian bg-canvas-white transition-colors disabled:cursor-not-allowed disabled:opacity-45';
+  'inline-flex items-center justify-center rounded-[6px] border border-line-strong bg-canvas-white transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40';
 
 export const iconButtonSizes = {
-  md: 'h-[46px] w-[46px]',
-  sm: 'h-[40px] w-[40px]',
-  cad: 'h-[44px] w-[44px]'
+  md: 'h-[38px] w-[38px]',
+  sm: 'h-[32px] w-[32px]',
+  cad: 'h-[36px] w-[36px]'
 } as const;
 
 /** Botón solo icono para plantillas HTML dinámicas (dashboard). */
@@ -111,5 +111,5 @@ export function iconButtonHtml(
   const attrStr = Object.entries(attrs)
     .map(([k, v]) => `${k}="${v}"`)
     .join(' ');
-  return `<button type="button" class="${iconButtonClass} ${iconButtonSizes.md} ${extraClass}" title="${label}" aria-label="${label}" ${attrStr}>${iconSvg(icon)}</button>`;
+  return `<button type="button" class="${iconButtonClass} ${iconButtonSizes.md} ${extraClass}" title="${label}" aria-label="${label}" ${attrStr}>${iconSvg(icon, 18)}</button>`;
 }

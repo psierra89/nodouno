@@ -7,7 +7,7 @@ import type { ElementType } from '@nodouno/calc';
 
 const STORY_HEIGHT_M = 3;
 const SLAB_COLORS = [0xc8c8d0, 0xb8d4e8, 0xd4c8b8, 0xc8d8c8, 0xe0c8d8, 0xd8e0c8];
-const SELECT_EMISSIVE = 0xbc7155;
+const SELECT_EMISSIVE = 0x1c4d8b;
 
 export type StructuralSelectHandler = (
   elementId: string,
@@ -32,7 +32,7 @@ function makeLabel(text: string): CSS2DObject {
   const div = document.createElement('div');
   div.textContent = text;
   div.style.cssText =
-    'padding:4px 10px;border:1px solid rgba(0,13,16,0.18);border-radius:9999px;background:rgba(255,255,255,0.92);font:700 12px/1.2 system-ui,sans-serif;color:#000d10;pointer-events:none;';
+    'padding:3px 8px;border:1px solid rgba(13,27,38,0.22);border-radius:4px;background:rgba(255,255,255,0.94);font:500 11px/1.2 "IBM Plex Mono",monospace;color:#0d1b26;pointer-events:none;';
   return new CSS2DObject(div);
 }
 
@@ -124,7 +124,7 @@ function createBeamMesh(beam: BeamInput, index: number, slabTopY: number): THREE
   const depth = Math.max(0.12, beam.depthM);
   const width = Math.max(0.12, beam.widthM);
   const beamId = beam.id ?? `beam-${index + 1}`;
-  const mat = new THREE.MeshStandardMaterial({ color: 0x1a2528, roughness: 0.65, metalness: 0.08 });
+  const mat = new THREE.MeshStandardMaterial({ color: 0x22303c, roughness: 0.65, metalness: 0.08 });
 
   if (beam.x1 != null && beam.y1 != null && beam.x2 != null && beam.y2 != null) {
     const dx = beam.x2 - beam.x1;
@@ -150,7 +150,7 @@ function createColumnMesh(
   const d = Math.max(0.15, col.depthM);
   const h = columnHeightM(col);
   const geom = new THREE.BoxGeometry(w, h, d);
-  const mat = new THREE.MeshStandardMaterial({ color: 0xbc7155, roughness: 0.7, metalness: 0.05 });
+  const mat = new THREE.MeshStandardMaterial({ color: 0xb4552d, roughness: 0.7, metalness: 0.05 });
   const mesh = new THREE.Mesh(geom, mat);
   const columnId = col.id ?? `column-${index + 1}`;
   mesh.position.set(position[0], h / 2, position[1]);
@@ -171,7 +171,7 @@ export function createStructuralViewer3d(
   const height = Math.max(1, container.clientHeight || 360);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf8f8f8);
+  scene.background = new THREE.Color(0xeef1f4);
 
   const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 500);
   const bounds0 = { minX: -5, maxX: 5, minZ: -4, maxZ: 4 };
@@ -182,7 +182,7 @@ export function createStructuralViewer3d(
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(width, height);
-  renderer.domElement.className = 'absolute inset-0 block h-full w-full rounded-3xl';
+  renderer.domElement.className = 'absolute inset-0 block h-full w-full rounded-[8px]';
   renderer.domElement.style.touchAction = 'none';
   container.appendChild(renderer.domElement);
 
@@ -357,8 +357,8 @@ export function createStructuralViewer3d(
         material.transparent = mesh.userData.elementType === 'slab';
         continue;
       }
-      if (mesh.userData.elementType === 'beam') material.color.setHex(0x22353a);
-      if (mesh.userData.elementType === 'column') material.color.setHex(0xa55d45);
+      if (mesh.userData.elementType === 'beam') material.color.setHex(0x2b3d4c);
+      if (mesh.userData.elementType === 'column') material.color.setHex(0xa04c28);
       material.opacity = 1;
       material.transparent = false;
     }

@@ -1,23 +1,125 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import IconButton from '../components/IconButton.astro';
-import logoFull from '../../assets/logos/Full-Fondo-Blanco.png';
+import Icon from '../components/Icon.astro';
+import logoDark from '../../assets/logos/Tr-Fondo-Negro.png';
 ---
-<Layout>
-  <main class="flex min-h-screen items-center justify-center bg-canvas-white px-16 py-31 text-obsidian md:px-23">
-    <section class="flex w-full max-w-[860px] flex-col items-center gap-22 rounded-3xl border border-obsidian px-22 py-31 text-center md:px-38 md:py-53">
-      <img src={logoFull.src} alt="Nodouno" class="h-auto w-full" />
-      <h1 class="text-[clamp(52px,9vw,187px)] leading-[0.8] tracking-[-0.02em]">
-        Calculo de Estructuras.
-        <br />
-        Simple.
-        <br />
-        Rapido.
-      </h1>
-      <p class="max-w-[52ch] text-slate-mist">
-        Haz un predimensionamiento de tus plantas de hormigon armado, de manera precisa, clara y rapida.
-      </p>
-      <IconButton href="/login" variant="primary" icon="arrow-right" label="Comenzar" />
+<Layout title="Nodouno · Cálculo de estructuras de hormigón armado">
+  <main class="flex min-h-screen flex-col bg-blueprint-deep text-canvas-white">
+    <header class="flex items-center justify-between border-b border-white/15 px-38 py-16">
+      <div class="flex items-center gap-13">
+        <img src={logoDark.src} alt="Nodo 1" class="h-[34px] w-auto" />
+        <span class="microlabel text-white/60">Servicios de Ingeniería Civil</span>
+      </div>
+      <nav class="flex items-center gap-16">
+        <span class="microlabel hidden text-white/40 lg:inline">CIRSOC 201 · ADN 420</span>
+        <a
+          href="/login"
+          class="inline-flex items-center gap-8 rounded-[6px] border border-white/30 px-17 py-11 text-body-sm font-semibold text-canvas-white no-underline transition-colors duration-150 hover:border-white hover:bg-canvas-white hover:text-blueprint-deep"
+        >
+          Iniciar sesión
+          <Icon name="log-in" size={16} />
+        </a>
+      </nav>
+    </header>
+
+    <section class="blueprint-grid relative flex flex-1 items-center overflow-hidden">
+      <div aria-hidden="true" class="pointer-events-none absolute inset-x-38 top-0 flex justify-between text-[11px] font-medium tracking-[0.14em] text-white/25" style="font-family: var(--font-mono);">
+        <span class="border-l border-white/20 py-8 pl-8">A</span>
+        <span class="border-l border-white/20 py-8 pl-8">B</span>
+        <span class="border-l border-white/20 py-8 pl-8">C</span>
+        <span class="border-l border-white/20 py-8 pl-8">D</span>
+        <span class="border-l border-white/20 py-8 pl-8">E</span>
+      </div>
+
+      <div class="relative mx-auto grid w-full max-w-[1240px] gap-38 px-38 py-60 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-center">
+        <div>
+          <p class="microlabel text-white/50">Plataforma de predimensionamiento estructural</p>
+          <h1 class="mt-21 font-display text-[clamp(44px,5.4vw,84px)] font-bold leading-[0.98] tracking-[-0.02em]">
+            Cálculo de estructuras.
+            <br />
+            <span class="text-white/45">Simple. Rápido.</span>
+          </h1>
+          <p class="mt-23 max-w-[52ch] text-[15px] leading-[1.65] text-white/70">
+            Dibuja la planta en el editor CAD 2D, asigna cargas según CIRSOC 101 y obtén el
+            predimensionamiento de losas, vigas y columnas de hormigón armado con verificación
+            por elemento e informe técnico exportable.
+          </p>
+          <div class="mt-34 flex flex-wrap items-center gap-16">
+            <a
+              href="/login"
+              class="inline-flex items-center gap-8 rounded-[6px] border border-canvas-white bg-canvas-white px-21 py-13 text-body-sm font-semibold leading-none text-blueprint-deep no-underline transition-colors duration-150 hover:bg-transparent hover:text-canvas-white"
+            >
+              Comenzar ahora
+              <Icon name="arrow-right" size={16} />
+            </a>
+            <span class="datum text-[12px] text-white/40">rev. 2026 · hormigón H25–H35</span>
+          </div>
+        </div>
+
+        <div class="hidden lg:block" aria-hidden="true">
+          <svg viewBox="0 0 380 320" class="w-full" fill="none" stroke="currentColor">
+            <!-- Pórtico esquemático con cotas, a modo de plano -->
+            <g stroke="rgba(255,255,255,0.85)" stroke-width="2">
+              <rect x="60" y="60" width="24" height="200" fill="rgba(255,255,255,0.08)" />
+              <rect x="296" y="60" width="24" height="200" fill="rgba(255,255,255,0.08)" />
+              <rect x="60" y="60" width="260" height="22" fill="rgba(255,255,255,0.14)" />
+            </g>
+            <g stroke="rgba(255,255,255,0.35)" stroke-width="1">
+              <line x1="60" y1="290" x2="320" y2="290" />
+              <line x1="60" y1="284" x2="60" y2="296" />
+              <line x1="320" y1="284" x2="320" y2="296" />
+              <line x1="30" y1="60" x2="30" y2="260" />
+              <line x1="24" y1="60" x2="36" y2="60" />
+              <line x1="24" y1="260" x2="36" y2="260" />
+            </g>
+            <g stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="4 4">
+              <line x1="72" y1="30" x2="72" y2="290" />
+              <line x1="308" y1="30" x2="308" y2="290" />
+              <path d="M 84 82 Q 190 150 296 82" />
+            </g>
+            <g fill="rgba(255,255,255,0.55)" font-size="11" stroke="none" style="font-family: var(--font-mono);">
+              <text x="178" y="306">L = 6.00 m</text>
+              <text x="10" y="166" transform="rotate(-90 14 166)">h = 3.00 m</text>
+              <text x="168" y="52">VIGA 25×50</text>
+              <text x="40" y="180" transform="rotate(-90 44 180)"></text>
+              <text x="90" y="200">C1 35×35</text>
+              <text x="240" y="200">C2 35×35</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="border-t border-white/15 bg-blueprint-deep">
+      <div class="mx-auto grid w-full max-w-[1240px] gap-x-38 px-38 md:grid-cols-3">
+        <div class="border-b border-white/10 py-23 md:border-b-0 md:border-r md:pr-31">
+          <p class="datum text-[12px] text-white/40">01</p>
+          <h2 class="mt-8 font-display text-subheading font-semibold">Editor CAD 2D</h2>
+          <p class="mt-8 text-[14px] leading-[1.6] text-white/60">
+            Vigas, columnas y losas con snap, ortho y propiedades por elemento. Todo en el navegador.
+          </p>
+        </div>
+        <div class="border-b border-white/10 py-23 md:border-b-0 md:border-r md:px-31">
+          <p class="datum text-[12px] text-white/40">02</p>
+          <h2 class="mt-8 font-display text-subheading font-semibold">Cargas CIRSOC 101</h2>
+          <p class="mt-8 text-[14px] leading-[1.6] text-white/60">
+            Tipologías de uso predefinidas y sobrecargas manuales por losa, con validación previa al cálculo.
+          </p>
+        </div>
+        <div class="py-23 md:pl-31">
+          <p class="datum text-[12px] text-white/40">03</p>
+          <h2 class="mt-8 font-display text-subheading font-semibold">Dimensionamiento</h2>
+          <p class="mt-8 text-[14px] leading-[1.6] text-white/60">
+            Solicitaciones, armado y verificación por elemento en 3D. Informe PDF y snapshot JSON.
+          </p>
+        </div>
+      </div>
+      <div class="border-t border-white/10">
+        <div class="mx-auto flex w-full max-w-[1240px] flex-wrap items-center justify-between gap-13 px-38 py-15">
+          <span class="microlabel text-white/35">Nodo 1 · Servicios de Ingeniería Civil</span>
+          <span class="datum text-[11px] text-white/35">CIRSOC 201 · CIRSOC 101 · ADN 420</span>
+        </div>
+      </div>
     </section>
   </main>
 </Layout>

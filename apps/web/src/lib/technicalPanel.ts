@@ -61,10 +61,10 @@ function diagramSvg(
   }
   return `
     <figure class="tech-diagram">
-      <figcaption class="text-body-sm font-bold text-obsidian">${label}</figcaption>
+      <figcaption class="microlabel text-obsidian">${label}</figcaption>
       <svg viewBox="0 0 ${w} ${h}" class="mt-8 w-full max-w-[240px]" aria-hidden="true">
-        <line x1="8" y1="${mid}" x2="${w - 8}" y2="${mid}" stroke="#000d10" stroke-width="1" opacity="0.25"/>
-        <path d="${path}" fill="none" stroke="#bc7155" stroke-width="2"/>
+        <line x1="8" y1="${mid}" x2="${w - 8}" y2="${mid}" stroke="#0d1b26" stroke-width="1" opacity="0.25"/>
+        <path d="${path}" fill="none" stroke="#1c4d8b" stroke-width="2"/>
       </svg>
       <p class="mt-4 text-body-sm text-slate-mist tabular-nums">máx ≈ ${fmt(values.max)}</p>
     </figure>`;
@@ -93,9 +93,9 @@ function sectionSvg(
   }
   return `
     <figure class="tech-diagram">
-      <figcaption class="text-body-sm font-bold text-obsidian">${title}</figcaption>
+      <figcaption class="microlabel text-obsidian">${title}</figcaption>
       <svg viewBox="0 0 ${w} ${h}" class="mt-8 w-full max-w-[140px]" aria-hidden="true">
-        <rect x="${pad}" y="${pad}" width="${bw}" height="${bh}" fill="#f0f0f0" stroke="#000d10" stroke-width="1.5"/>
+        <rect x="${pad}" y="${pad}" width="${bw}" height="${bh}" fill="#eef1f4" stroke="#0d1b26" stroke-width="1.5"/>
         ${circles}
       </svg>
       <p class="mt-4 text-body-sm text-slate-mist tabular-nums">${bMm}×${hMm} mm · ρ=${fmt(rho, 4)}</p>
@@ -119,13 +119,13 @@ function renderBeamPanel(
 
   return `
     <header>
-      <h4 class="text-subheading leading-subheading tracking-subheading">Viga</h4>
+      <h4 class="font-display text-subheading leading-subheading font-semibold">Viga</h4>
       <p class="mt-4 text-body-sm text-slate-mist">ID ${elementId.slice(-8)}</p>
     </header>
-    <dl class="mt-16 grid grid-cols-2 gap-8 text-body-sm tabular-nums">
-      <div><dt class="text-slate-mist">b×h</dt><dd class="font-bold">${fmt(beam.widthM)}×${fmt(beam.depthM)} m</dd></div>
-      <div><dt class="text-slate-mist">Luz</dt><dd class="font-bold">${fmt(L)} m</dd></div>
-      <div><dt class="text-slate-mist">q<sub>últ</sub></dt><dd class="font-bold">${fmt(q)} kN/m</dd></div>
+    <dl class="datum mt-16 grid grid-cols-2 gap-8 text-[13px]">
+      <div><dt class="text-slate-mist">b×h</dt><dd class="font-semibold text-obsidian">${fmt(beam.widthM)}×${fmt(beam.depthM)} m</dd></div>
+      <div><dt class="text-slate-mist">Luz</dt><dd class="font-semibold text-obsidian">${fmt(L)} m</dd></div>
+      <div><dt class="text-slate-mist">q<sub>últ</sub></dt><dd class="font-semibold text-obsidian">${fmt(q)} kN/m</dd></div>
     </dl>
     <div class="mt-16 grid gap-16 sm:grid-cols-2">
       ${diagramSvg('load', { max: q }, 'Carga distribuida q')}
@@ -154,14 +154,14 @@ function renderSlabPanel(
 
   return `
     <header>
-      <h4 class="text-subheading leading-subheading tracking-subheading">Losa</h4>
+      <h4 class="font-display text-subheading leading-subheading font-semibold">Losa</h4>
       <p class="mt-4 text-body-sm text-slate-mist">ID ${elementId.slice(-8)} · ${fmt(slab.areaM2, 1)} m²</p>
     </header>
-    <dl class="mt-16 grid grid-cols-2 gap-8 text-body-sm tabular-nums">
-      <div><dt class="text-slate-mist">Espesor</dt><dd class="font-bold">${fmt(slab.thicknessM)} m</dd></div>
-      <div><dt class="text-slate-mist">Luces</dt><dd class="font-bold">${fmt(short)} / ${fmt(long)} m</dd></div>
-      <div><dt class="text-slate-mist">D / L</dt><dd class="font-bold">${fmt(load?.D ?? 0)} / ${fmt(load?.L ?? 0)} kN/m²</dd></div>
-      <div><dt class="text-slate-mist">q<sub>últ</sub></dt><dd class="font-bold">${fmt(load?.qu ?? 0)} kN/m²</dd></div>
+    <dl class="datum mt-16 grid grid-cols-2 gap-8 text-[13px]">
+      <div><dt class="text-slate-mist">Espesor</dt><dd class="font-semibold text-obsidian">${fmt(slab.thicknessM)} m</dd></div>
+      <div><dt class="text-slate-mist">Luces</dt><dd class="font-semibold text-obsidian">${fmt(short)} / ${fmt(long)} m</dd></div>
+      <div><dt class="text-slate-mist">D / L</dt><dd class="font-semibold text-obsidian">${fmt(load?.D ?? 0)} / ${fmt(load?.L ?? 0)} kN/m²</dd></div>
+      <div><dt class="text-slate-mist">q<sub>últ</sub></dt><dd class="font-semibold text-obsidian">${fmt(load?.qu ?? 0)} kN/m²</dd></div>
     </dl>
     <div class="mt-16 grid gap-16 sm:grid-cols-2">
       ${diagramSvg('load', { max: load?.qu ?? 0 }, 'Carga superficial')}
@@ -189,14 +189,14 @@ function renderColumnPanel(
 
   return `
     <header>
-      <h4 class="text-subheading leading-subheading tracking-subheading">Columna</h4>
+      <h4 class="font-display text-subheading leading-subheading font-semibold">Columna</h4>
       <p class="mt-4 text-body-sm text-slate-mist">ID ${elementId.slice(-8)}</p>
     </header>
-    <dl class="mt-16 grid grid-cols-2 gap-8 text-body-sm tabular-nums">
-      <div><dt class="text-slate-mist">b×h</dt><dd class="font-bold">${fmt(col.widthM)}×${fmt(col.depthM)} m</dd></div>
-      <div><dt class="text-slate-mist">Altura piso</dt><dd class="font-bold">≈ ${fmt(storyH)} m (${col.floors} pisos)</dd></div>
-      <div><dt class="text-slate-mist">P<sub>u</sub></dt><dd class="font-bold">${fmt(load?.axialLoadKn ?? demand?.PuKn ?? 0)} kN</dd></div>
-      <div><dt class="text-slate-mist">M<sub>u</sub></dt><dd class="font-bold">${fmt(demand?.MuKnm ?? 0)} kN·m</dd></div>
+    <dl class="datum mt-16 grid grid-cols-2 gap-8 text-[13px]">
+      <div><dt class="text-slate-mist">b×h</dt><dd class="font-semibold text-obsidian">${fmt(col.widthM)}×${fmt(col.depthM)} m</dd></div>
+      <div><dt class="text-slate-mist">Altura piso</dt><dd class="font-semibold text-obsidian">≈ ${fmt(storyH)} m (${col.floors} pisos)</dd></div>
+      <div><dt class="text-slate-mist">P<sub>u</sub></dt><dd class="font-semibold text-obsidian">${fmt(load?.axialLoadKn ?? demand?.PuKn ?? 0)} kN</dd></div>
+      <div><dt class="text-slate-mist">M<sub>u</sub></dt><dd class="font-semibold text-obsidian">${fmt(demand?.MuKnm ?? 0)} kN·m</dd></div>
     </dl>
     <div class="mt-16 grid gap-16 sm:grid-cols-2">
       ${diagramSvg('load', { max: load?.axialLoadKn ?? 0 }, 'Carga axial')}

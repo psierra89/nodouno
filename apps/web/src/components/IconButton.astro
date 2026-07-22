@@ -25,23 +25,23 @@ const {
 
 const variantClasses = {
   primary:
-    'border border-desert-sienna bg-desert-sienna text-canvas-white hover:opacity-90',
-  dark: 'border border-obsidian bg-obsidian text-canvas-white hover:opacity-90',
+    'border border-blueprint bg-blueprint text-canvas-white hover:bg-blueprint-deep hover:border-blueprint-deep',
+  dark: 'border border-obsidian bg-obsidian text-canvas-white hover:bg-blueprint hover:border-blueprint',
   ghost:
-    'border border-obsidian bg-transparent text-obsidian hover:bg-obsidian hover:text-canvas-white'
+    'border border-line-strong bg-canvas-white text-obsidian hover:border-obsidian hover:bg-obsidian hover:text-canvas-white'
 };
 
 const sizeClasses = {
-  md: 'h-[46px] w-[46px]',
-  sm: 'h-[40px] w-[40px]',
-  cad: 'h-[44px] w-[44px]'
+  md: 'h-[38px] w-[38px]',
+  sm: 'h-[32px] w-[32px]',
+  cad: 'h-[36px] w-[36px]'
 };
 
-const iconSize = size === 'sm' ? 18 : 20;
+const iconSize = size === 'sm' ? 16 : 18;
 
 const baseClasses = [
-  'inline-flex items-center justify-center rounded-full border transition-opacity',
-  'disabled:cursor-not-allowed disabled:opacity-45',
+  'inline-flex items-center justify-center rounded-[6px] transition-colors duration-150',
+  'disabled:cursor-not-allowed disabled:opacity-40',
   sizeClasses[size],
   variantClasses[variant],
   className

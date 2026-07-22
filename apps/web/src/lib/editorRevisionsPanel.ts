@@ -47,17 +47,17 @@ export function renderRevisionListHtml(
       const isCurrent = currentRevisionId === revision.id;
       return `
         <article
-          class="flex flex-wrap items-center justify-between gap-11 rounded-3xl border px-16 py-13 text-left transition-colors ${
-            isCurrent ? 'border-obsidian bg-obsidian/5' : 'border-obsidian/20 hover:border-obsidian'
+          class="flex flex-wrap items-center justify-between gap-11 rounded-[6px] border px-15 py-13 text-left transition-colors ${
+            isCurrent ? 'border-blueprint bg-blueprint/5' : 'border-line hover:border-line-strong'
           }"
           data-revision-id="${revision.id}"
         >
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-8">
-              <strong class="text-obsidian">v${revision.version}</strong>
+              <strong class="datum text-obsidian">v${revision.version}</strong>
               ${
                 isCurrent
-                  ? '<span class="rounded-full border border-obsidian/30 px-8 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-obsidian">Actual</span>'
+                  ? '<span class="rounded-[4px] border border-blueprint px-8 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-blueprint">Actual</span>'
                   : ''
               }
             </div>
@@ -66,10 +66,10 @@ export function renderRevisionListHtml(
             }</span>
           </div>
           <div class="flex items-center gap-8">
-            ${iconButtonHtml('undo', `Restaurar revision v${revision.version}`, 'shrink-0', {
+            ${iconButtonHtml('undo', `Restaurar revision v${revision.version}`, 'shrink-0 text-obsidian hover:border-obsidian hover:bg-obsidian hover:text-canvas-white', {
               'data-restore-revision-id': revision.id
             })}
-            ${iconButtonHtml('download', `Exportar revision v${revision.version}`, 'shrink-0', {
+            ${iconButtonHtml('download', `Exportar revision v${revision.version}`, 'shrink-0 text-obsidian hover:border-obsidian hover:bg-obsidian hover:text-canvas-white', {
               'data-export-revision-id': revision.id
             })}
           </div>
